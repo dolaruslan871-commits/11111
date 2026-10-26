@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: ubuntu-latest
             target: mac
           - os: windows-latest
             target: win
@@ -36,7 +36,10 @@ jobs:
       - run: npm ci
       - run: npm run vendor
       - run: npm test
-      - run: npm run dist:${{ matrix.target }}
+      - if: matrix.target == 'win'
+        run: npm run dist:win
+      - if: matrix.target == 'mac'
+        run: npm exec -- electron-builder --mac zip --x64 --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: actions/upload-artifact@v4
@@ -44,7 +47,7 @@ jobs:
           name: Paw-${{ matrix.target }}
           compression-level: 0
           path: |
-            paw/release/*.dmg
+            paw/release/*.zip
             paw/release/*Setup.exe
           if-no-files-found: error
   release:
