@@ -1,68 +1,85 @@
-# Paw 0.2 · маленький 3D-друг
+# Paw 0.4 — desktop pet
 
-Мультяшный питомец для рабочего стола macOS 12+ (Intel / Apple Silicon) и Windows 10/11 x64. В этой версии — настоящие объёмные модели Three.js, без внешних серверов, моделей или текстур.
+Paw is an offline-first Electron desktop pet for Windows x64 and macOS Intel / Apple Silicon. Version 0.4 is based on the user's supplied `Paw-0.3.0-app.asar`; the upload was extracted without executing it. AI integration is deliberately excluded.
 
-## Скачать и обновить
+## Install / update
 
-Установщики и исходники: **https://github.com/dolaruslan871-commits/11111/releases/tag/paw-v0.2.0**. Они публикуются после успешной сборки GitHub Actions; до её завершения страница может быть недоступна.
+Download the native build from the GitHub release linked in `RELEASE_NOTES.md`.
 
-1. Закрой старый Paw через меню питомца → «Выйти из Paw». Если запускал через `npm start`, останови процесс Ctrl+C в терминале.
-2. Mac Intel: скачай `Paw-0.2.0-mac-x64.zip`; Mac M1/M2/M3/M4 и новее: `Paw-0.2.0-mac-arm64.zip`. Распакуй ZIP и перемести `Paw.app` в «Программы».
-3. Windows: скачай `Paw-0.2.0-windows-x64-Setup.exe` и пройди установку.
-4. Запусти Paw из «Программ» / меню «Пуск». Другу можно отправить ссылку на тот же установщик: Node.js ему не понадобится.
+- **Windows:** close Paw from its tray menu, run `Paw-0.4.0-windows-x64-Setup.exe`, and finish installation. The installer creates a desktop shortcut.
+- **Mac Intel:** download `Paw-0.4.0-mac-x64.zip`.
+- **Mac M1/M2/M3/M4 and later Apple Silicon:** download `Paw-0.4.0-mac-arm64.zip`.
+- **Mac:** quit Paw, extract with macOS **Archive Utility**, and drag the whole **Paw.app** into **Applications**, replacing the previous app. Open Paw from Applications. Do not open or move its internal `Contents` directory. ZIP archives for Mac contain the complete `.app`; they are not Windows installers.
 
-Сборки предварительные, пока без подписи и нотариального заверения Apple / подписи Windows. Система может запросить разрешение на запуск. На Mac после первой попытки: «Системные настройки → Конфиденциальность и безопасность → Всё равно открыть». Не отключай системную защиту целиком. Новая версия использует прежнее хранилище настроек, отдельно от папки приложения; одежда старой версии автоматически дополняется новыми настройками.
+Installed builds need no Node.js, terminal, or npm. The existing settings directory remains `paw-desktop-pet`, so 0.3 outfits and settings migrate. New life progress lives separately in `progress.json` beside `preferences.json`. Builds are unsigned and not notarized; operating system security prompts may appear.
 
-Если предпочитаешь исходники: скачай новый `Paw-source.zip`, распакуй **в новую папку**, открой в ней терминал:
+## Life and behavior
+
+The **Personality / Характер** page shows age, mood, energy, hunger, friendship, level, coins, and house progress. Adoption starts on the first 0.4 launch. Age continues while Paw is closed. Growth is tied to real elapsed days, not XP or time spent clicking: a visible small increase each week, young stage after two weeks, adult size after eight weeks. Babies also have proportionally larger heads. Size in Settings remains an independent display scale.
+
+The pet walks, sleeps after computer inactivity, greets the returning user, follows a nearby cursor, seeks attention, and reacts to mood, energy, weather and local time. Personality controls include activity, curiosity, laziness, walk/attention frequency, quiet hours, night sleep, reminder intervals, movement mode, optional app/window reactions, seasons and zero gravity.
+
+Select a city in **Settings** for Open-Meteo weather. Rain produces an umbrella/raincoat; snow adds a scarf; heat produces a fan. Night sleep uses pajamas when no outfit overrides that slot. Seasons add optional snowflakes, leaves or flowers. Christmas and Halloween use temporary seasonal hats in empty outfit slots; saved outfits are retained. Enter your birthday for the annual cake animation.
+
+Two pets can share the desktop: select a companion in Personality. They meet, play, chase, briefly quarrel and rest together. A house grows from a box to a cabin by spending earned coins. The pet can rest in it and peek out.
+
+## Pets and graphics
+
+Nine characters: dog, cat, crocodile, kangaroo, dinosaur, owl, rabbit, fox, and the husky **Хася / Hasya**. The husky has a separate gray-white palette, facial mask, blue irises, upright ears, cheek/neck tufts, white paws and a curled fluffy tail. The owl, kangaroo and dinosaur have slimmer silhouettes. The inappropriate shared front collar is removed from those species. Faces, eyes and silhouettes have additional detail; clothes follow the body and limbs. Rendering uses locally packaged Three.js, capped pixel ratio, 30 fps and pauses when hidden/detached.
+
+Dark theme is neutral black/graphite with muted lavender accents and glass panels. Light theme and Russian/Ukrainian/English remain available. The same WebGL canvas is retained when switching pages, languages and themes.
+
+## Play, rewards and gestures
+
+- Double click: pet the animal. Repeated paw taps: anger. Tail tap: chase tail.
+- Five quick ear taps: detective animation. Fast 360° rotation: dance.
+- Four 30-second click games: fishing (wait for the bite), butterflies, ball, and hide-and-seek. Each successful catch awards game coins when the round completes, with a bounded reward. Game IDs and target transitions are checked in the main process.
+- One gift per local calendar day: accessory or coins. New reward items cost coins; the existing 0.3 wardrobe stays accessible.
+- Carrot, cookie and berries affect hunger, mood and favorite food. Food is virtual and separate from file feeding.
+- Skateboard, scooter, jetpack, zero gravity, painting, books, gamepad, umbrella, fan, gifts and birthday cake have procedural 3D props and animations.
+- Drag the preview or use its rotation slider to inspect clothes through 360°.
+
+## Desktop tools
+
+The right-click glass menu opens audio/Bluetooth controls, weather, one app shortcut, music, timer, notes, screenshot, search, computer indicators, games and Personality.
+
+- Timer and dated alarm; saved across restarts. Due notes and timers are processed even while the menu is open. Pet gestures and icons signal reminders; task text is shown in the dashboard.
+- Notes with optional due times, completion and deletion.
+- Play/pause, next/previous and volume-step media commands through the OS.
+- Screenshots through Electron desktop capture: whole display or a dragged rectangle, saved as a local PNG through a Save dialog. Capture occurs only after the user requests it.
+- File/app search uses macOS Spotlight or Windows Search's system index plus local app directories. Only returned search results can be launched. A separate button opens a web search in the default browser.
+- CPU utilization and RAM use actual OS counters; battery uses native tools. Temperature is explicitly unavailable when there is no supported standard sensor interface. Indicators do not invent values.
+- Optional window reactions use foreground-window bounds to approach edges and upper borders. Hiding is represented by clipping the pet; this is not full occlusion/compositing behind every arbitrary app. macOS may require Automation / Accessibility permission; unsupported window services fail quietly.
+- Optional app reactions recognize common code editors, games and music apps by process name. They do not inspect document text or upload app activity.
+- Device sound mute uses macOS volume settings / Windows Core Audio, not the pet's own mute switch. Bluetooth on macOS uses an installed `blueutil` helper when available; otherwise Paw opens Bluetooth settings. Windows uses WinRT radios. These features depend on OS permissions and hardware.
+
+## File feeding
+
+Explicitly dropped files **and folders** go through the native system Trash / Recycle Bin, following an eating or carrying animation. There is no delete confirmation on a drop and no permanent-delete fallback. Selecting parent and child together trashes the parent once. Links and protected roots / running app ancestors are rejected. Real source disappearance is checked; errors are not displayed as success. Virtual treats do not touch files.
+
+## Development
 
 ```sh
+cd paw
 npm ci
+npm run vendor
+npm test
 npm start
 ```
 
-Рекомендуется Node.js 24 LTS. Не копируй старую `node_modules`. При пропущенной загрузке Electron выполни `node node_modules/electron/install.js` и повтори запуск.
-
-## Что нового
-
-- Три оригинальных 3D-питомца: собачка Бадди, котик Моти, крокодильчик Киви. Четыре отдельные лапы с чередованием шага, моргание, дыхание, хвост, уши, объёмный свет.
-- 13 состояний: прогулка, игра, сон, еда, охота за бабочкой, ласка, приветствие, лапки на экран, потягивание, радость, грусть, переноска файла и спокойный отдых.
-- Полукруглое прозрачное glass-меню по правой кнопке мыши. Управление действиями, звуком, режимом «Поверх окон», быстрыми настройками и размером.
-- **59 вещей в шести категориях**: шапки, очки, шарфики, игрушки, одежда и аксессуары. Можно одновременно надеть вещи из всех категорий; весь образ сохраняется.
-- Размер питомца от 60% до 160%, включение/выключение «Поверх окон», русский / украинский / английский, светлая / тёмная темы. Настройки сохраняются между запусками.
-- Оригинальные процедурные мультяшные голоса: гав-гав, мяуканье, писк/ворчание крокодильчика. Это синтез, а не записи животных.
-- Исправлен native drag-and-drop: путь файла берётся непосредственно в preload, не теряется при передаче через contextBridge; приём согласован с разрешённым типом перетаскивания. Прозрачные поля окна пропускают обычные клики; положение курсора проверяется в main, чтобы родной drop-target включался при перетаскивании на питомца.
-
-## Кормление
-
-Перетащи сохранённый обычный файл из Finder / Проводника на питомца либо используй «Покормить». Подтверждения нет, как настроено пользователем. Выбор в настройках:
-
-- **Съесть** — жевание и крошки, затем файл в системную корзину.
-- **Отнести в зубах** — листик в зубах, походка к символу корзины в правом нижнем углу, затем системная корзина. Позиция настоящего значка Dock/Проводника не определяется.
-
-Используется только `shell.trashItem`, никогда безвозвратное удаление. После операции проверяется исчезновение исходного файла; при отказе или частичном успехе отображается реальное число перемещённых файлов. Папки и символические ссылки не принимаются, максимум 20 файлов за раз. Первая проверка — на ненужном тестовом файле. Если ОС не дала Paw доступ к папке, файл остаётся на месте и показывается ошибка.
-
-## Быстрые настройки системы
-
-Wi-Fi: команды macOS/Windows, выбор только физического беспроводного адаптера, проверка результата. ОС может требовать дополнительные права; приложение самостоятельно их не повышает. Bluetooth: Windows WinRT при наличии разрешения; на Mac — переход в системные настройки. Ethernet не выключается.
-
-## Разработка и проверки
+Node 24 is used in CI. All Three.js modules and original vector art are local, without CDN runtime dependencies. Synthesized voices are original animal-inspired sounds, not recordings. `npm run vendor` also regenerates the browser preview copy of the tested pure life engine.
 
 ```sh
-npm test
 npm run test:ui
 bash scripts/cloud-desktop-test.sh
+npm run dist:win
+npm run dist:mac
 ```
 
-- 32 unit-теста: миграция старых настроек, каталог, размер/мониторы, локализация/тема/порядок окон, два режима кормления, отмена, дубли, каталоги/ссылки, ошибки и частичный успех корзины; системные команды проверяются с имитацией ОС.
-- UI: настоящий WebGL, все 195 сочетаний вида и отдельной вещи, четыре независимые лапы и поднятие передних лап, три языка, темы, размер, поверх окон, гардероб и восстановление; Chromium по умолчанию `/usr/bin/chromium` (можно задать `PAW_CHROMIUM`).
-- Electron: прозрачность пикселей, режим поверх окон, контекстная изоляция, стеклянное полукруглое меню, синхронизация 3D, сохранение после перезапуска; настоящее перемещение тестового файла в корзину через выбор файла **и через native-backed перетаскивание CDP**.
-- Скриншоты — `test-results/`. Файлы только для интеграционных тестов создаются под `.runtime/paw-integration-*`; изолированная тестовая корзина — `data/Trash`. Данные игрока не затрагиваются.
-- Облачный скрипт сам поднимает и останавливает свой виртуальный X-дисплей. Только тестовый Linux-процесс использует `--no-sandbox`, поскольку ядро этой среды не предоставляет sandbox Chromium. Обычный запуск и сборки этого флага не содержат.
+The browser preview supports appearance/personality and illustrative virtual life, notes and timer state. OS controls, native screenshots, native game reward persistence and file trashing require the desktop app. It is not an installer.
 
-Three.js 0.186.1 закреплён lock-файлом; `npm run vendor` копирует его модули и лицензию в `src/vendor/` для автономной работы. Не нужны CDN и отдельные службы.
+## Validation and limits
 
-## Сборка приложений
+Unit tests cover calendar growth, rest/return, quiet hours, weather responses, daily gift limits, food, reminders, birthdays, preference migration, gestures, OS command validation, weather request/cache behavior and reversible folder feeding. Browser tests construct all catalog options across all species using real WebGL. Native Linux integration checks sandboxed preload IPC, menu, timers/tasks, gifts, game reward boundaries, a real folder+child Trash drop, and restart persistence.
 
-На Mac: `npm run dist:mac`. На Windows: `npm run dist:win`. Результат — `release/`. GitHub Actions публикует ZIP с `Paw.app` обеих архитектур и NSIS EXE для Windows с SHA-256. Из-за недоступности macOS-runner ZIP кросс-собираются на Linux, Windows EXE — на Windows. DMG можно собрать отдельно на Mac командой выше. Релиз 0.2 успешно собран и опубликован.
-
-Программные проверки выполнялись в Linux; работа на настоящих Mac/Windows и их Wi-Fi/Bluetooth требует проверки на этих устройствах. При недоступности WebGL 2 появляется явно обозначенный запасной 2D-режим. Подпись релизов, автоматическое обновление, голосовой ИИ и облачные аккаунты пока не реализованы.
+Mac ZIPs are cross-packaged on Ubuntu; Windows NSIS is built on Windows. Real Mac/Windows GUI, Bluetooth hardware, system media dispatch and OS permission dialogs cannot be fully verified on the Linux development machine. Check these on target hardware. The application is a procedural desktop pet, not a biological simulator; movement and game modes are deliberately lightweight.

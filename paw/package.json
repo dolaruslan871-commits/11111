@@ -1,8 +1,8 @@
 {
   "name": "paw-desktop-pet",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Paw — a little friend for your desktop",
+  "description": "Paw \u2014 a little friend for your desktop",
   "author": "Paw",
   "main": "src/main.cjs",
   "scripts": {

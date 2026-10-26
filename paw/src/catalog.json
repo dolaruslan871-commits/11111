@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.4.0",
   "wardrobe": {
     "hat": [
       {
@@ -133,6 +133,78 @@
           "uk": "Шолом космонавта",
           "en": "Astronaut helmet"
         }
+      },
+      {
+        "id": "winter",
+        "name": "Зимняя шапка с ушками",
+        "color": "#5b83a6",
+        "accent": "#e7f5ff",
+        "shape": "winter",
+        "names": {
+          "uk": "Зимова шапка з вушками",
+          "en": "Winter earflap hat"
+        }
+      },
+      {
+        "id": "witch",
+        "name": "Ведьминская шляпа",
+        "color": "#624583",
+        "accent": "#e7a24c",
+        "shape": "witch",
+        "names": {
+          "uk": "Відьомський капелюх",
+          "en": "Witch hat"
+        }
+      },
+      {
+        "id": "pumpkin",
+        "name": "Тыквенная шапочка",
+        "color": "#e98e38",
+        "accent": "#618b4f",
+        "shape": "pumpkin",
+        "names": {
+          "uk": "Гарбузова шапочка",
+          "en": "Pumpkin hat"
+        }
+      },
+      {
+        "id": "mooncap",
+        "base": "beanie",
+        "name": "Лунная шапочка",
+        "names": {
+          "ru": "Лунная шапочка",
+          "uk": "Місячна шапочка",
+          "en": "Moon beanie"
+        },
+        "color": "#a6a0d1",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "sunny",
+        "base": "cap",
+        "name": "Солнечная кепка",
+        "names": {
+          "ru": "Солнечная кепка",
+          "uk": "Сонячна кепка",
+          "en": "Sunny cap"
+        },
+        "color": "#e3bd75",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "detective",
+        "base": "bucket",
+        "name": "Детектив",
+        "names": {
+          "ru": "Детектив",
+          "uk": "Детектив",
+          "en": "Detective"
+        },
+        "color": "#a38a72",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ],
     "glasses": [
@@ -245,6 +317,19 @@
           "uk": "Веселкові окуляри",
           "en": "Rainbow glasses"
         }
+      },
+      {
+        "id": "lavender",
+        "base": "round",
+        "name": "Лавандовые",
+        "names": {
+          "ru": "Лавандовые",
+          "uk": "Лавандові",
+          "en": "Lavender"
+        },
+        "color": "#aa96cf",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ],
     "scarf": [
@@ -357,6 +442,41 @@
           "uk": "Шарф у горошок",
           "en": "Polka dot scarf"
         }
+      },
+      {
+        "id": "christmas",
+        "name": "Новогодний шарф",
+        "color": "#b43b4b",
+        "accent": "#f9edda",
+        "shape": "christmas",
+        "names": {
+          "uk": "Новорічний шарф",
+          "en": "Christmas scarf"
+        }
+      },
+      {
+        "id": "halloween",
+        "name": "Хэллоуинский шарф",
+        "color": "#e18a39",
+        "accent": "#493159",
+        "shape": "halloween",
+        "names": {
+          "uk": "Геловінський шарф",
+          "en": "Halloween scarf"
+        }
+      },
+      {
+        "id": "cozy",
+        "base": "polka",
+        "name": "Уютный шарф",
+        "names": {
+          "ru": "Уютный шарф",
+          "uk": "Затишний шарф",
+          "en": "Cozy scarf"
+        },
+        "color": "#cda1b2",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ],
     "toy": [
@@ -480,6 +600,65 @@
           "uk": "Зірочка",
           "en": "Little star"
         }
+      },
+      {
+        "id": "christmas-tree",
+        "name": "Новогодняя ёлка",
+        "color": "#47855b",
+        "accent": "#e4bc4f",
+        "shape": "christmas-tree",
+        "names": {
+          "uk": "Новорічна ялинка",
+          "en": "Christmas tree"
+        }
+      },
+      {
+        "id": "pumpkin",
+        "name": "Фонарик-тыква",
+        "color": "#e8953e",
+        "accent": "#674b76",
+        "shape": "pumpkin",
+        "names": {
+          "uk": "Гарбузовий ліхтарик",
+          "en": "Jack-o-lantern"
+        }
+      },
+      {
+        "id": "ghost",
+        "name": "Игрушка-привидение",
+        "color": "#efeef6",
+        "accent": "#7970a0",
+        "shape": "ghost",
+        "names": {
+          "uk": "Іграшка-привид",
+          "en": "Ghost toy"
+        }
+      },
+      {
+        "id": "pearlball",
+        "base": "ball",
+        "name": "Лунный мячик",
+        "names": {
+          "ru": "Лунный мячик",
+          "uk": "Місячний м’ячик",
+          "en": "Moon ball"
+        },
+        "color": "#b7b1df",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "mintduck",
+        "base": "duck",
+        "name": "Мятная уточка",
+        "names": {
+          "ru": "Мятная уточка",
+          "uk": "М’ятна качечка",
+          "en": "Mint duck"
+        },
+        "color": "#a0c6b8",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ],
     "clothing": [
@@ -603,6 +782,67 @@
           "uk": "Сорочка",
           "en": "Shirt"
         }
+      },
+      {
+        "id": "christmas",
+        "name": "Новогодний свитер",
+        "color": "#b43b4b",
+        "accent": "#f3e8d4",
+        "shape": "christmas",
+        "names": {
+          "uk": "Новорічний светр",
+          "en": "Christmas sweater"
+        }
+      },
+      {
+        "id": "halloween",
+        "name": "Костюм тыквы",
+        "color": "#df8b3d",
+        "accent": "#4a7146",
+        "shape": "halloween",
+        "names": {
+          "uk": "Костюм гарбуза",
+          "en": "Pumpkin costume"
+        }
+      },
+      {
+        "id": "dream",
+        "base": "pajamas",
+        "name": "Сонная пижама",
+        "names": {
+          "ru": "Сонная пижама",
+          "uk": "Сонна піжама",
+          "en": "Dream pajamas"
+        },
+        "color": "#b3acd8",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "suncoat",
+        "base": "raincoat",
+        "name": "Солнечный дождевик",
+        "names": {
+          "ru": "Солнечный дождевик",
+          "uk": "Сонячний дощовик",
+          "en": "Sunny raincoat"
+        },
+        "color": "#ebc069",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "sweater",
+        "base": "shirt",
+        "name": "Тёплый свитер",
+        "names": {
+          "ru": "Тёплый свитер",
+          "uk": "Теплий светр",
+          "en": "Warm sweater"
+        },
+        "color": "#c3979c",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ],
     "accessory": [
@@ -726,6 +966,43 @@
           "uk": "Німб",
           "en": "Halo"
         }
+      },
+      {
+        "id": "bat-wings",
+        "name": "Крылья летучей мыши",
+        "color": "#55405e",
+        "accent": "#a787af",
+        "shape": "bat-wings",
+        "names": {
+          "uk": "Крила кажана",
+          "en": "Bat wings"
+        }
+      },
+      {
+        "id": "moonwings",
+        "base": "wings",
+        "name": "Лунные крылья",
+        "names": {
+          "ru": "Лунные крылья",
+          "uk": "Місячні крила",
+          "en": "Moon wings"
+        },
+        "color": "#bcb3dd",
+        "accent": "#f8e7c8",
+        "price": 30
+      },
+      {
+        "id": "traveler",
+        "base": "pouch",
+        "name": "Путешественник",
+        "names": {
+          "ru": "Путешественник",
+          "uk": "Мандрівник",
+          "en": "Traveler"
+        },
+        "color": "#b3967a",
+        "accent": "#f8e7c8",
+        "price": 30
       }
     ]
   },
@@ -802,6 +1079,16 @@
       "id": "carry",
       "name": "Несёт файл в корзину",
       "emoji": "📄"
+    },
+    {
+      "id": "angry",
+      "name": "Сердится",
+      "emoji": ""
+    },
+    {
+      "id": "chase-tail",
+      "name": "Ловит свой хвост",
+      "emoji": ""
     }
   ],
   "soundDescriptions": {
