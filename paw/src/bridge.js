@@ -1,4 +1,4 @@
-const initial = { skin: 'dog', muted: false, roaming: true, activity: 'idle', direction: 1, outfit: { hat: 'none', glasses: 'none', scarf: 'none', toy: 'none' }, desktop: false };
+const initial = { skin: 'dog', muted: false, roaming: true, activity: 'idle', direction: 1, scale:1,feedMode:'eat',alwaysOnTop:true,language:'ru',theme:'light',menuOpen:false,outfit: { hat: 'none', glasses: 'none', scarf: 'none', toy: 'none',clothing:'none',accessory:'none' }, desktop: false };
 let value = initial;
 try { value = { ...initial, ...JSON.parse(localStorage.getItem('paw-preview') || '{}'), desktop: false }; } catch {}
 const listeners = new Set();
@@ -17,6 +17,9 @@ export const api = window.paw || {
   settings: async () => ({ ok: false, message: 'Системные настройки доступны в настольном приложении.' }),
   wifi: async () => ({ ok: false, message: 'Переключатель Wi-Fi доступен на Mac и Windows.' }),
   bluetooth: async () => ({ ok: false, message: 'Переключатель Bluetooth доступен в приложении для Windows.' }),
-  menu: () => {},
+  menu: () => { value={...value,menuOpen:!value.menuOpen};emit(); },
+  closeMenu: () => {value={...value,menuOpen:false};emit();},
+  dashboard:async()=>false,hide:async()=>false,quit:async()=>false,
+  onFeedResult:()=>()=>{},
   onState: callback => { listeners.add(callback); return () => listeners.delete(callback); },
 };

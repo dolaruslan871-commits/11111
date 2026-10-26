@@ -1,15 +1,24 @@
 const { app, BrowserWindow, Menu, ipcMain, screen, dialog, shell, Tray, nativeImage } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { sanitizeSettings, clampPosition, STATES } = require('./model.cjs');
+const { sanitizeSettings, clampPosition, petWindowSize, STATES } = require('./model.cjs');
 const { createSystemControls } = require('./system-controls.cjs');
+const { createFeeder } = require('./feeding.cjs');
+
+// Keep the same settings location for npm and packaged builds, including 0.1.
+app.setName('paw-desktop-pet');
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', () => { openDashboard(); showPet(); });
+if (process.platform === 'win32') app.setAppUserModelId('app.paw.desktop');
 
 let dashboard, petWindow, preferences, savePath, tray;
 let activity = 'idle', activityUntil = Date.now() + 10000, direction = 1, dragging = null, feeding = false;
+let menuOpen = false, feedState = null, carryMotion = null, ignoringMouse = false;
 let saveQueue = Promise.resolve();
 const system = createSystemControls();
 const isSmoke = process.argv.includes('--smoke-test');
-const state = () => ({ ...preferences, activity, direction, platform: process.platform, desktop: true });
+const nativeText = key => ({ru:{home:'Домик и гардероб',show:'Показать питомца',quit:'Выйти из Paw',feed:'Угости питомца ненужным файлом'},uk:{home:'Домівка та гардероб',show:'Показати улюбленця',quit:'Вийти з Paw',feed:'Пригости улюбленця непотрібним файлом'},en:{home:'Home & wardrobe',show:'Show my pet',quit:'Quit Paw',feed:'Treat your pet to an unwanted file'}}[preferences?.language || 'ru'][key]);
+const state = () => ({ ...preferences, version: '0.2.0', activity, direction, menuOpen, feed: feedState, window: petWindowSize(preferences?.scale), platform: process.platform, desktop: true });
 const broadcast = () => {
   for (const win of [dashboard, petWindow]) if (win && !win.isDestroyed()) win.webContents.send('paw:state', state());
 };
@@ -29,7 +38,11 @@ function setActivity(value, duration = 8500) {
 }
 async function update(patch) {
   if (!patch || typeof patch !== 'object') return state();
+  const previousScale = preferences.scale;
   preferences = sanitizeSettings({ ...preferences, ...patch, outfit: { ...preferences.outfit, ...patch.outfit } });
+  if (preferences.scale !== previousScale) resizePet();
+  if (petWindow && !petWindow.isDestroyed()) petWindow.setAlwaysOnTop(preferences.alwaysOnTop);
+  refreshTray();
   await save(); broadcast(); return state();
 }
 function secureWindow(win) {
@@ -51,11 +64,23 @@ function showPet() {
   petWindow.setIgnoreMouseEvents(false);
   return true;
 }
+function resizePet() {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  const old = petWindow.getBounds(), size = petWindowSize(preferences.scale);
+  const area = screen.getDisplayMatching(old).workArea;
+  const position = clampPosition({ x: old.x + (old.width - size.width) / 2, y: old.y + old.height - size.height }, area, size);
+  petWindow.setBounds({ ...position, ...size });
+}
 function createPet() {
   const area = screen.getPrimaryDisplay().workArea;
-  petWindow = new BrowserWindow({ width: 246, height: 250, x: area.x + area.width - 290, y: area.y + area.height - 260, frame: false, transparent: true, backgroundColor: '#00000000', resizable: false, hasShadow: false, alwaysOnTop: true, skipTaskbar: true, webPreferences });
+  const size = petWindowSize(preferences.scale);
+  const position = clampPosition({ x: area.x + area.width - size.width - 30, y: area.y + area.height - size.height }, area, size);
+  petWindow = new BrowserWindow({ ...size, ...position, frame: false, transparent: true, backgroundColor: '#00000000', resizable: false, hasShadow: false, alwaysOnTop: preferences.alwaysOnTop, skipTaskbar: true, webPreferences });
   secureWindow(petWindow);
   petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Keep the native drop target alive. Click-through used to make Finder drops
+  // disappear before Chromium could deliver the file to our preload listener.
+  petWindow.setIgnoreMouseEvents(false);
   petWindow.loadFile(path.join(__dirname, 'pet.html'));
   petWindow.on('closed', () => { petWindow = null; });
 }
@@ -64,67 +89,51 @@ function createTray() {
   if (process.platform === 'darwin') image.setTemplateImage(true);
   tray = new Tray(image);
   tray.setToolTip('Paw · маленький друг');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Домик и гардероб', click: openDashboard },
-    { label: 'Показать питомца', click: showPet },
-    { type: 'separator' },
-    { label: 'Выйти из Paw', click: () => app.quit() },
-  ]));
+  refreshTray();
   tray.on('click', openDashboard);
 }
+function refreshTray() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: nativeText('home'), click: openDashboard },
+    { label: nativeText('show'), click: showPet },
+    { type: 'separator' },
+    { label: nativeText('quit'), click: () => app.quit() },
+  ]));
+}
+const feeder = createFeeder({
+  trash: file => shell.trashItem(file),
+  lstat: file => fs.lstat(file),
+  chooseFiles: owner => dialog.showOpenDialog(owner, { title: nativeText('feed'), properties: ['openFile', 'multiSelections'] }),
+  onPhase: value => {
+    feedState = value;
+    if (value.phase === 'working') {
+      menuOpen = false;
+      if (value.mode === 'carry' && petWindow && !petWindow.isDestroyed()) {
+        const bounds = petWindow.getBounds(), area = screen.getDisplayMatching(bounds).workArea;
+        carryMotion = { start: Date.now(), from: bounds, to: clampPosition({ x: area.x + area.width - bounds.width, y: area.y + area.height - bounds.height }, area, bounds) };
+        direction = carryMotion.to.x < bounds.x ? -1 : 1;
+      }
+      setActivity(value.mode, 20000);
+    } else {
+      carryMotion = null;
+      setActivity(value.phase === 'done' ? (value.mode === 'carry' ? 'excited' : 'eat') : 'sad', value.phase === 'done' ? 6000 : 6500);
+    }
+  },
+});
 async function feedFiles(sender, requestedPaths) {
   if (feeding) return { ok: false, message: 'Сначала закончим предыдущее кормление.' };
   feeding = true;
-  const owner = BrowserWindow.fromWebContents(sender);
-  try {
-    let paths = requestedPaths;
-    if (paths === null) {
-      const selected = await dialog.showOpenDialog(owner, { title: 'Угости питомца ненужным файлом', properties: ['openFile', 'multiSelections'] });
-      if (selected.canceled) return { ok: false, canceled: true };
-      paths = selected.filePaths;
-    }
-    if (!Array.isArray(paths) || !paths.length || paths.length > 20 || !paths.every(p => typeof p === 'string' && path.isAbsolute(p))) return { ok: false, message: 'Выбери от 1 до 20 обычных файлов.' };
-    paths = [...new Set(paths)];
-    for (const file of paths) if (!(await fs.lstat(file)).isFile()) return { ok: false, message: 'Пока можно кормить только файлами, без папок и ссылок.' };
-    let count = 0;
-    for (const file of paths) {
-      try { await shell.trashItem(file); count++; }
-      catch { return { ok: false, message: `В корзине: ${count} из ${paths.length}. Остальные файлы переместить не удалось.` }; }
-    }
-    setActivity('eat', 6000);
-    return { ok: true, count, message: 'Ням! Файлы теперь в корзине.' };
-  } catch { return { ok: false, message: 'Не удалось прочитать файл или открыть корзину. Файлы не удалялись безвозвратно.' }; }
+  try { return await feeder.feed(requestedPaths, { mode: preferences.feedMode, owner: BrowserWindow.fromWebContents(sender) }); }
   finally { feeding = false; }
 }
 function contextMenu() {
-  const template = [
-    { label: 'Paw · маленький друг', enabled: false },
-    { label: 'Погладить ♡', click: () => setActivity('pet', 4500) },
-    { label: 'Поиграть', click: () => setActivity('play', 10000) },
-    { label: activity === 'sleep' ? 'Разбудить' : 'Уложить спать', click: () => setActivity(activity === 'sleep' ? 'idle' : 'sleep', 120000) },
-    { label: 'Покормить файлом…', click: () => feedFiles(petWindow.webContents, null) },
-    { type: 'separator' },
-    { label: 'Выключить звук', type: 'checkbox', checked: preferences.muted, click: item => update({ muted: item.checked }) },
-    { label: 'Гулять по экрану', type: 'checkbox', checked: preferences.roaming, click: item => update({ roaming: item.checked }) },
-    { label: 'Wi-Fi', submenu: [
-      { label: 'Включить', click: () => reportSystem(changeWifi(true)) },
-      { label: 'Выключить', click: () => reportSystem(changeWifi(false)) },
-      { label: 'Настройки Wi-Fi…', click: () => openSettings('wifi') },
-    ] },
-    { label: 'Bluetooth', submenu: [
-      ...(process.platform === 'win32' ? [
-        { label: 'Включить', click: () => reportSystem(changeBluetooth(true)) },
-        { label: 'Выключить', click: () => reportSystem(changeBluetooth(false)) },
-      ] : []),
-      { label: 'Настройки Bluetooth…', click: () => reportSystem(openSettings('bluetooth')) },
-    ] },
-    { type: 'separator' },
-    { label: 'Домик и гардероб…', click: openDashboard },
-    { label: 'Спрятать питомца', click: () => petWindow.hide() },
-    { label: 'Выйти из Paw', click: () => app.quit() },
-  ];
-  Menu.buildFromTemplate(template).popup({ window: petWindow });
+  if (feeding) return;
+  menuOpen = !menuOpen;
+  dragging = null;
+  broadcast();
 }
+function closeMenu() { if (menuOpen) { menuOpen = false; broadcast(); } }
 async function openSettings(kind) {
   if (!['wifi', 'bluetooth'].includes(kind)) return { ok: false };
   const url = system.getSettingsUrl(kind);
@@ -157,17 +166,23 @@ function registerIpc() {
   handle('paw:get-state', () => state());
   handle('paw:update', (_, patch) => update(patch));
   handle('paw:show-pet', showPet);
-  handle('paw:action', (_, value) => { if (STATES.has(value)) setActivity(value, value === 'sleep' ? 120000 : 8500); return state(); });
+  handle('paw:dashboard', () => { closeMenu(); openDashboard(); return true; });
+  handle('paw:hide', () => { closeMenu(); petWindow?.hide(); return true; });
+  handle('paw:quit', () => { app.quit(); return true; });
+  handle('paw:action', (_, value) => { if (!feeding && STATES.has(value)) { closeMenu(); setActivity(value, value === 'sleep' ? 120000 : 8500); } return state(); });
   handle('paw:feed', (event, paths) => feedFiles(event.sender, paths));
   handle('paw:system-status', () => system.getStatus());
   handle('paw:wifi', (_, enabled) => changeWifi(enabled));
   handle('paw:bluetooth', (_, enabled) => changeBluetooth(enabled));
   handle('paw:settings', (_, kind) => openSettings(kind));
   ipcMain.on('paw:menu', event => { if (trusted(event)) contextMenu(); });
-  ipcMain.on('paw:hit', (event, value) => { if (trusted(event) && event.sender === petWindow?.webContents) petWindow.setIgnoreMouseEvents(!value, { forward: true }); });
+  ipcMain.on('paw:close-menu', event => { if (trusted(event)) closeMenu(); });
+  // Native cursor polling owns hit-testing so Finder/Explorer drags can enter
+  // the pet even while Chromium is forwarding ordinary clicks through margins.
+  ipcMain.on('paw:hit', () => {});
   ipcMain.on('paw:drag', (event, phase, point) => {
     if (!trusted(event) || event.sender !== petWindow?.webContents || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
-    if (phase === 'start') { dragging = { point, bounds: petWindow.getBounds() }; }
+    if (phase === 'start' && !feeding && !menuOpen) { dragging = { point, bounds: petWindow.getBounds() }; }
     else if (phase === 'end') { dragging = null; }
     else if (phase === 'move' && dragging) {
       const target = { x: dragging.bounds.x + point.x - dragging.point.x, y: dragging.bounds.y + point.y - dragging.point.y };
@@ -178,9 +193,21 @@ function registerIpc() {
   });
 }
 function tick() {
-  if (!petWindow || petWindow.isDestroyed() || dragging || feeding) return;
+  if (!petWindow || petWindow.isDestroyed()) return;
+  const cursor = screen.getCursorScreenPoint(), bounds = petWindow.getBounds(), scale = preferences.scale;
+  const relative = { x: (cursor.x - bounds.x) / scale, y: (cursor.y - bounds.y) / scale };
+  const insidePet = relative.x >= 80 && relative.x <= 350 && relative.y >= 125 && relative.y <= 385;
+  const shouldIgnore = !(insidePet || menuOpen || dragging || feeding);
+  if (shouldIgnore !== ignoringMouse) { ignoringMouse = shouldIgnore; petWindow.setIgnoreMouseEvents(shouldIgnore, { forward: true }); }
+  if (carryMotion && feeding) {
+    const progress = Math.min(1, (Date.now() - carryMotion.start) / 1450);
+    const ease = progress * progress * (3 - 2 * progress);
+    petWindow.setPosition(Math.round(carryMotion.from.x + (carryMotion.to.x - carryMotion.from.x) * ease), Math.round(carryMotion.from.y + (carryMotion.to.y - carryMotion.from.y) * ease));
+    return;
+  }
+  if (dragging || feeding || menuOpen) return;
   if (Date.now() > activityUntil) {
-    const options = preferences.roaming ? ['idle', 'idle', 'walk', 'walk', 'play', 'hunt', 'sleep'] : ['idle', 'play', 'sleep'];
+    const options = preferences.roaming ? ['idle', 'idle', 'walk', 'walk', 'play', 'hunt', 'sleep', 'stand', 'wave', 'stretch', 'excited'] : ['idle', 'play', 'sleep', 'stand', 'wave', 'stretch'];
     setActivity(options[Math.floor(Math.random() * options.length)], 12000 + Math.random() * 16000);
   }
   if (preferences.roaming && ['walk', 'hunt'].includes(activity) && petWindow.isVisible()) {
@@ -205,8 +232,8 @@ app.whenReady().then(async () => {
   if (isSmoke) {
     setTimeout(async () => {
       try {
-        const result = await dashboard.webContents.executeJavaScript(`({ title: document.title, pets: document.querySelectorAll('[data-skin]').length, bridge: !!window.paw, svg: !!document.querySelector('svg.pet-art') })`);
-        if (!result.bridge || !result.svg || result.pets !== 3) throw new Error(JSON.stringify(result));
+        const result = await dashboard.webContents.executeJavaScript(`({ title: document.title, pets: document.querySelectorAll('.pet-card[data-skin]').length, bridge: !!window.paw, pet: !!document.querySelector('canvas.pet-3d, svg.pet-art') })`);
+        if (!result.bridge || !result.pet || result.pets !== 3) throw new Error(JSON.stringify(result));
         console.log('PAW ELECTRON SMOKE PASS', JSON.stringify(result)); app.exit(0);
       } catch (error) { console.error(error); app.exit(1); }
     }, 3500);

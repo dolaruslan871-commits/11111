@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { DEFAULTS, OPTIONS, sanitizeSettings, clampPosition } = require('../src/model.cjs');
+const { DEFAULTS, OPTIONS, sanitizeSettings, clampPosition, petWindowSize } = require('../src/model.cjs');
 
 test('missing and malformed settings become safe defaults', () => {
   assert.deepEqual(sanitizeSettings(), DEFAULTS);
@@ -19,14 +19,10 @@ test('missing and malformed settings become safe defaults', () => {
 
 test('all supported skins and outfit combinations survive persistence sanitization', () => {
   for (const skin of ['dog', 'cat', 'croc']) {
-    for (const hat of OPTIONS.hat) {
-      for (const glasses of OPTIONS.glasses) {
-        for (const scarf of OPTIONS.scarf) {
-          for (const toy of OPTIONS.toy) {
-            const settings = { skin, muted: true, roaming: false, outfit: { hat, glasses, scarf, toy } };
-            assert.deepEqual(sanitizeSettings(JSON.parse(JSON.stringify(settings))), settings);
-          }
-        }
+    for (const [category, choices] of Object.entries(OPTIONS)) {
+      for (const choice of choices) {
+        const settings = { ...DEFAULTS, skin, muted: true, roaming: false, outfit: { ...DEFAULTS.outfit, [category]: choice } };
+        assert.deepEqual(sanitizeSettings(JSON.parse(JSON.stringify(settings))), settings);
       }
     }
   }
@@ -37,9 +33,37 @@ test('one invalid outfit choice leaves independent valid choices intact', () => 
     skin: 'cat', muted: true, roaming: false,
     outfit: { hat: 'party', glasses: 'broken', scarf: 'sage', toy: 'ball' },
   }), {
-    skin: 'cat', muted: true, roaming: false,
-    outfit: { hat: 'party', glasses: 'none', scarf: 'sage', toy: 'ball' },
+    ...DEFAULTS, skin: 'cat', muted: true, roaming: false,
+    outfit: { ...DEFAULTS.outfit, hat: 'party', glasses: 'none', scarf: 'sage', toy: 'ball' },
   });
+});
+
+test('old version settings migrate while preserving a friend and four existing accessories', () => {
+  const old = { skin: 'cat', muted: true, roaming: false, outfit: { hat: 'beanie', glasses: 'round', scarf: 'coral', toy: 'bone' } };
+  const migrated = sanitizeSettings(old);
+  assert.equal(migrated.scale, 1); assert.equal(migrated.feedMode, 'eat');
+  assert.equal(migrated.outfit.hat, 'beanie'); assert.equal(migrated.outfit.clothing, 'none'); assert.equal(migrated.outfit.accessory, 'none');
+});
+
+test('pet size has finite limits and keeps carry mode across a restart', () => {
+  assert.equal(sanitizeSettings({ scale: 0 }).scale, .6);
+  assert.equal(sanitizeSettings({ scale: 10 }).scale, 1.6);
+  assert.equal(sanitizeSettings({ scale: NaN }).scale, 1);
+  assert.equal(sanitizeSettings({ scale: Infinity }).scale, 1);
+  const restored = sanitizeSettings(JSON.parse(JSON.stringify({ scale: 1.4, feedMode: 'carry' })));
+  assert.equal(restored.scale, 1.4); assert.equal(restored.feedMode, 'carry');
+  assert.deepEqual(petWindowSize(.6), { width: 258, height: 234 });
+  assert.deepEqual(petWindowSize(1.6), { width: 688, height: 624 });
+});
+
+test('language, theme and real window ordering migrate and survive persistence', () => {
+  for (const language of ['ru','uk','en']) {
+    const restored=sanitizeSettings(JSON.parse(JSON.stringify({language,theme:'dark',alwaysOnTop:false})));
+    assert.equal(restored.language,language);assert.equal(restored.theme,'dark');assert.equal(restored.alwaysOnTop,false);
+  }
+  assert.equal(sanitizeSettings({language:'../../en',theme:'bad',alwaysOnTop:'false'}).language,'ru');
+  assert.equal(sanitizeSettings({language:'bad',theme:'bad',alwaysOnTop:'false'}).theme,'light');
+  assert.equal(sanitizeSettings({alwaysOnTop:'false'}).alwaysOnTop,true);
 });
 
 test('sanitized settings do not share mutable outfit data with persisted input or defaults', () => {
