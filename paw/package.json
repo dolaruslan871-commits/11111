@@ -1,0 +1,33 @@
+{
+  "name": "paw-desktop-pet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Paw — a little friend for your desktop",
+  "author": "Paw",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "test:ui": "node scripts/ui-smoke.cjs",
+    "test:desktop": "node scripts/electron-smoke.cjs",
+    "preview": "python3 -m http.server 4173 --bind 127.0.0.1 --directory src",
+    "dist:mac": "electron-builder --mac dmg --x64 --arm64",
+    "dist:win": "electron-builder --win nsis --x64",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "playwright-core": "1.64.1"
+  },
+  "build": {
+    "appId": "app.paw.desktop",
+    "productName": "Paw",
+    "icon": "src/assets/icon.png",
+    "directories": { "output": "release" },
+    "files": ["src/**/*", "package.json"],
+    "mac": { "category": "public.app-category.entertainment", "target": ["dmg"], "darkModeSupport": true },
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true }
+  }
+}
