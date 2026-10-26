@@ -5,6 +5,9 @@ on:
     branches: ['downloads']
     paths: ['.github/workflows/paw-release.yml']
   workflow_dispatch:
+concurrency:
+  group: paw-installers
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -13,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-latest
             target: mac
           - os: windows-latest
             target: win
@@ -42,7 +45,6 @@ jobs:
           compression-level: 0
           path: |
             paw/release/*.dmg
-            paw/release/*.zip
             paw/release/*Setup.exe
           if-no-files-found: error
   release:
