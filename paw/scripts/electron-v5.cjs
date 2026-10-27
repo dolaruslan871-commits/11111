@@ -79,8 +79,12 @@ const project = path.resolve(__dirname, ".."),
     assert.equal((await state()).names.husky, undefined);
     assert.equal((await state()).names.cat, "Барсик");
     assert.equal((await state()).theme, "ocean");
-    await call('update',{shortcuts:[{path:'/tmp/injected.exe',name:'Blocked'}],browser:{path:'/tmp/injected.exe',name:'Blocked'}});
-    assert.equal((await state()).shortcuts.length,0);assert.equal((await state()).browser,null);
+    await call("update", {
+      shortcuts: [{ path: "/tmp/injected.exe", name: "Blocked" }],
+      browser: { path: "/tmp/injected.exe", name: "Blocked" },
+    });
+    assert.equal((await state()).shortcuts.length, 0);
+    assert.equal((await state()).browser, null);
     assert.equal((await call("action", "stand")).activity === "stand", false);
     await call("menu");
     let widget;
@@ -109,8 +113,8 @@ const project = path.resolve(__dirname, ".."),
       path: path.join(project, "test-results", "widget-v5.png"),
       omitBackground: true,
     });
-    await widget.locator('#quick-studio').click();
-    await page.locator('#studio-action').waitFor();
+    await widget.locator("#quick-studio").click();
+    await page.locator("#studio-action").waitFor();
     await call("closeMenu");
     const bounds = await app.evaluate(({ BrowserWindow, screen }) => {
       const p = BrowserWindow.getAllWindows().find((w) =>
@@ -233,7 +237,7 @@ const project = path.resolve(__dirname, ".."),
     await page.locator(".pet-card").first().waitFor();
     assert.equal(await page.locator("#welcome-continue").count(), 0);
     const restored = await page.evaluate(() => window.paw.getState());
-    assert.equal(restored.version, "0.5.0");
+    assert.equal(restored.version, "0.5.1");
     assert.equal(restored.life.bornAt, bornAt);
     assert.equal(restored.life.inventory.kibble, 2);
     assert.equal(restored.life.garden[0].crop, "cabbage");

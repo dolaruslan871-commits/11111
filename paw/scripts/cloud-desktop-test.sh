@@ -19,5 +19,5 @@ if ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
   done
   if [[ "$ready" != true ]]; then cat .runtime/cloud-xorg-output.log; exit 1; fi
 fi
-node scripts/electron-v5.cjs
+if [[ "${PAW_WORLD_ONLY:-0}" != "1" ]]; then node scripts/electron-v5.cjs; fi
 node scripts/world-v5.cjs

@@ -7,7 +7,7 @@ const initial = {
   autostart: false,
   life: null,
   season: lifeAPI.season(new Date()),
-  version: "0.4.0",
+  version: "0.5.1",
   skin: "dog",
   muted: false,
   roaming: true,

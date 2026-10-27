@@ -1,4 +1,6 @@
-# Paw 0.5.0 · Play, grow & capture
+# Paw 0.5.1 · Play, grow & capture
+
+Includes the final fix allowing independent house and toy windows to load their packaged 3D scenes.
 
 - One-time animated welcome featuring all nine pets and a Continue button.
 - Separate glass quick menu above/right, inline music/timer/notes/search and multiple app launchers; browser and player pickers.
@@ -11,9 +13,9 @@
 
 ## Install
 
-Windows: quit Paw, run `Paw-0.5.0-windows-x64-Setup.exe`.
-Mac Intel: `Paw-0.5.0-mac-x64.zip`.
-Mac Apple Silicon: `Paw-0.5.0-mac-arm64.zip`.
+Windows: quit Paw, run `Paw-0.5.1-windows-x64-Setup.exe`.
+Mac Intel: `Paw-0.5.1-mac-x64.zip`.
+Mac Apple Silicon: `Paw-0.5.1-mac-arm64.zip`.
 Mac: extract with Archive Utility, replace the complete Paw.app in Applications, then open it. Node/npm are not required. Allow Desktop access if macOS requests it for exports/shortcut creation.
 
 Unsigned / unnotarized preview. Native media/Bluetooth/window features depend on platform permissions and hardware. Mac direct Bluetooth requires an available blueutil helper; otherwise settings open. Search opens Google results in the selected browser; it is not an AI answer service. If H.264 frame export is unavailable, video falls back to a supported MediaRecorder format. See the included 0.5 guide for controls and platform limits.

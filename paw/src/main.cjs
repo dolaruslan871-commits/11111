@@ -29,7 +29,7 @@ const gameEngine = require("./game-engine.cjs").createGameEngine();
 let menuWindow = null,
   houseWindow = null,
   toyWindow = null,
-  visualRect = { x: 125, y: 170, width: 180, height: 190 },
+  visualRect = { x: 85, y: 130, width: 260, height: 240 },
   restState = {},
   meal = null,
   mealFinish = null,
@@ -349,6 +349,7 @@ const state = () => ({
   feed: feedState,
   window: petWindowSize(effectivePetScale()),
   displayScale: effectivePetScale(),
+  visibleBounds: visualRect,
   platform: process.platform,
   desktop: true,
 });
@@ -422,6 +423,8 @@ async function update(patch, { allowShortcut = false } = {}) {
   if (patch.welcomeVersion === "0.5") showPet();
   if (petWindow && !petWindow.isDestroyed())
     petWindow.setAlwaysOnTop(preferences.alwaysOnTop);
+  for (const win of [houseWindow, toyWindow])
+    if (win && !win.isDestroyed()) win.setAlwaysOnTop(preferences.alwaysOnTop);
   nativeAppearance(dashboard);
   nativeAppearance(menuWindow);
   refreshTray();
@@ -759,7 +762,14 @@ async function reportSystem(pending) {
 }
 function registerIpc() {
   const trusted = (event) =>
-    [dashboard, petWindow, menuWindow, screenshotSession?.window].some(
+    [
+      dashboard,
+      petWindow,
+      menuWindow,
+      houseWindow,
+      toyWindow,
+      screenshotSession?.window,
+    ].some(
       (w) =>
         w &&
         !w.isDestroyed() &&
@@ -798,7 +808,15 @@ function registerIpc() {
       rect.y + rect.height > 390
     )
       return false;
-    visualRect = rect;
+    const pad = 32,
+      x = Math.max(0, rect.x - pad),
+      y = Math.max(0, rect.y - pad);
+    visualRect = {
+      x,
+      y,
+      width: Math.min(430 - x, rect.width + 2 * pad),
+      height: Math.min(390 - y, rect.height + 2 * pad),
+    };
     const b = petWindow.getBounds(),
       p = petClamp(b, petArea(b));
     if (p.x !== b.x || p.y !== b.y) petWindow.setPosition(p.x, p.y);

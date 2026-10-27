@@ -76,6 +76,24 @@ const root = path.resolve(__dirname, ".."),
         })),
     );
     assert.equal(original.length, 2);
+    const habitats = app
+      .windows()
+      .filter((p) => p.url().includes("habitat.html"));
+    for (const habitat of habitats) {
+      await habitat.locator("#scene[data-renderer=webgl] canvas").waitFor();
+      const visible = await app.evaluate(async ({ BrowserWindow }, url) => {
+        const w = BrowserWindow.getAllWindows().find(
+            (w) => w.webContents.getURL() === url,
+          ),
+          image = await w.capturePage(),
+          bytes = image.getBitmap();
+        let opaque = 0;
+        for (let i = 3; i < bytes.length; i += 4) if (bytes[i] > 150) opaque++;
+        return opaque;
+      }, habitat.url());
+      assert.ok(visible > 100, "habitat scene draws actual visible pixels");
+    }
+
     const house = original.find((w) => w.url.includes("house")),
       toy = original.find((w) => w.url.includes("toy"));
     assert.ok(house.visible && toy.visible);
@@ -95,6 +113,7 @@ const root = path.resolve(__dirname, ".."),
       { x: -5000, y: 5000 },
     ];
     for (const point of corners) {
+      await page.evaluate(() => window.paw.action("sit"));
       await pet.evaluate((point) => {
         window.paw.drag("start", { x: 0, y: 0 });
         window.paw.drag("move", point);

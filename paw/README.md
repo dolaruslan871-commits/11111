@@ -6,9 +6,9 @@ Desktop pets for Windows x64 and macOS Intel / Apple Silicon, built on the user'
 
 Use the external GitHub release assets, not the source archive:
 
-- `Paw-0.5.0-windows-x64-Setup.exe`: quit Paw, run Setup. A desktop shortcut is created.
-- `Paw-0.5.0-mac-x64.zip`: Mac Intel.
-- `Paw-0.5.0-mac-arm64.zip`: Mac Apple Silicon.
+- `Paw-0.5.1-windows-x64-Setup.exe`: quit Paw, run Setup. A desktop shortcut is created.
+- `Paw-0.5.1-mac-x64.zip`: Mac Intel.
+- `Paw-0.5.1-mac-arm64.zip`: Mac Apple Silicon.
 
 On Mac, extract with **Archive Utility**, move the **entire Paw.app** into **Applications**, replacing the previous version, then open it. A Desktop link is created on first packaged launch (subject to Desktop permissions). Never move the internal Contents folder. No terminal/npm required for installed builds.
 
