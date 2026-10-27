@@ -1,3 +1,6 @@
 Paw-0.7.1-mac-arm64.zip filter=lfs diff=lfs merge=lfs -text
 Paw-0.7.1-mac-x64.zip filter=lfs diff=lfs merge=lfs -text
 Paw-0.7.1-windows-x64-Setup.exe filter=lfs diff=lfs merge=lfs -text
+Paw-0.7.2-windows-x64-Setup.exe filter=lfs diff=lfs merge=lfs -text
+Paw-0.7.2-mac-arm64.zip filter=lfs diff=lfs merge=lfs -text
+Paw-0.7.2-mac-x64.zip filter=lfs diff=lfs merge=lfs -text

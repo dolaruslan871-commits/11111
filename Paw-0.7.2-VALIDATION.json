@@ -1,0 +1,175 @@
+{
+  "version": "0.7.2",
+  "status": "validated merged first-lake build",
+  "base": "user-supplied Paw-0.7.2-app.asar",
+  "automated_tests": {
+    "passed": 33,
+    "syntax_files": 71
+  },
+  "merge": {
+    "incoming_sha256": "902285fdc0a478ac6d17c3e15d41487df131569b420bbcc0aba130c92fdc8d3c",
+    "incoming_nonconflicting_files_preserved": true,
+    "incoming_styles_changes": "Only three requested sidebar spacing rules added",
+    "our_nonconflicting_files_preserved": true,
+    "our_extra_changes": [
+      "progress documentation",
+      "pause-curtain/header stacking fix"
+    ],
+    "manually_merged": [
+      "src/bridge.js",
+      "src/main.cjs",
+      "src/pet-3d.js",
+      "src/renderer.js",
+      "src/widget-layout.cjs"
+    ]
+  },
+  "mouse_and_graphics": {
+    "checks_passed": [
+      "Actual mouse cast, upward hook and held reel land one fish",
+      "Reserved fish survives bulk sale",
+      "Caught fish becomes existing pet food",
+      "Collection survives food allocation",
+      "Shop debits shared balance and equips improved rod",
+      "Graphics rebuild low",
+      "Graphics rebuild high",
+      "Graphics rebuild medium",
+      "Procedural ambience starts after gesture",
+      "Manual pause freezes simulation",
+      "Audio suspends on pause",
+      "Lost WebGL context pauses native simulation",
+      "WebGL context restores and resumes",
+      "Minimize handler freezes simulation (synthetic; no Xvfb WM)",
+      "World renderer is gone after close",
+      "Dashboard gets shared coins and food",
+      "Pet age and outfit survive world",
+      "World language en",
+      "Reopen preserves gear, food and records",
+      "World language uk",
+      "Reopen preserves gear, food and records",
+      "World language ru",
+      "Reopen preserves gear, food and records"
+    ],
+    "interrupted_check": "Exit on third repeated reopen: pause curtain covered header. Fixed with CSS stacking and rechecked separately.",
+    "renderer": "Electron 45, SwiftShader, Xvfb",
+    "target_os_runtime_tested": false
+  },
+  "final_packaged_archive": {
+    "checks": [
+      "Final ASAR launches 0.7.2",
+      "Requested sidebar whitespace is compact",
+      "Incoming collapsible sidebar preserved",
+      "Incoming camera zoom controls preserved",
+      "Incoming camera reset preserved",
+      "Packaged UI sells only unreserved fish and credits exact price",
+      "Packaged UI allocates remaining fish exactly once",
+      "Pause shows its curtain",
+      "Packaged dashboard observes shared economy",
+      "Packaged ordinary pet moves",
+      "No packaged renderer errors"
+    ],
+    "errors": []
+  },
+  "final_packaged_lifecycle": {
+    "checks": [
+      "Application restart retains shared food, coins and age",
+      "World gear, collection, weather and sound survive restart",
+      "Minimize handler freezes simulation (synthetic event; Xvfb has no WM)",
+      "Blur handler freezes simulation",
+      "Closed World renderer process is released",
+      "Ordinary desktop pet visibility is restored",
+      "World language en",
+      "Reopen retains gear en",
+      "World language uk",
+      "Reopen retains gear uk",
+      "World language ru",
+      "Reopen retains gear ru",
+      "Desktop pet still walks",
+      "Menu native height matches measured content",
+      "Held pose remains functional",
+      "Original pet feeding works after fish allocation",
+      "Pet returns to selected pose",
+      "No renderer errors"
+    ],
+    "errors": [],
+    "placement": [
+      {
+        "url": "file:///workspace/scratch/Paw-0.7.2-app.asar/src/widget.html",
+        "bounds": {
+          "x": 776,
+          "y": 506,
+          "width": 320,
+          "height": 475
+        }
+      },
+      {
+        "url": "file:///workspace/scratch/Paw-0.7.2-app.asar/src/pet.html",
+        "bounds": {
+          "x": 1004,
+          "y": 610,
+          "width": 430,
+          "height": 390
+        }
+      }
+    ]
+  },
+  "source_parity": [
+    {
+      "archive": "/workspace/scratch/Paw-0.7.2-app.asar",
+      "version": "0.7.2",
+      "sourceFilesMatched": 96,
+      "sha256": "32ef7f0932a0b3fe0f151fdc16399916d75519c8a088408f2d0100b0c445f5b1"
+    },
+    {
+      "archive": "/workspace/paw-072/release/mac/Paw.app/Contents/Resources/app.asar",
+      "version": "0.7.2",
+      "sourceFilesMatched": 96,
+      "sha256": "1df50bd9b4eb8922e7ea88a22575d4f10ca8047a0fe8d7b4e7e9e41f740832a6"
+    },
+    {
+      "archive": "/workspace/paw-072/release/mac-arm64/Paw.app/Contents/Resources/app.asar",
+      "version": "0.7.2",
+      "sourceFilesMatched": 96,
+      "sha256": "1df50bd9b4eb8922e7ea88a22575d4f10ca8047a0fe8d7b4e7e9e41f740832a6"
+    },
+    {
+      "archive": "/workspace/paw-072/release/win-unpacked/resources/app.asar",
+      "version": "0.7.2",
+      "sourceFilesMatched": 96,
+      "sha256": "1df50bd9b4eb8922e7ea88a22575d4f10ca8047a0fe8d7b4e7e9e41f740832a6"
+    }
+  ],
+  "installer_structure": [
+    {
+      "file": "Paw-0.7.2-mac-arm64.zip",
+      "bytes": 117650590,
+      "zip_crc": true,
+      "version": "0.7.2",
+      "cpu": "0x100000c",
+      "executable_mode": true,
+      "embedded_asar_match": true
+    },
+    {
+      "file": "Paw-0.7.2-mac-x64.zip",
+      "bytes": 121898680,
+      "zip_crc": true,
+      "version": "0.7.2",
+      "cpu": "0x1000007",
+      "executable_mode": true,
+      "embedded_asar_match": true
+    },
+    {
+      "file": "Paw-0.7.2-windows-x64-Setup.exe",
+      "bytes": 121938460,
+      "nsis_crc": true,
+      "cpu": "x64",
+      "embedded_asar_match": true,
+      "executable_match": true
+    }
+  ],
+  "limits": [
+    "Runtime checks used Linux Electron 45 with SwiftShader, not real macOS or Windows.",
+    "Minimize handlers use synthetic events because Xvfb has no window manager.",
+    "Packages are unsigned. Hardware FPS/Retina rendering and Gatekeeper/install behavior require target-device testing.",
+    "World stage includes the first forest lake only; Farm/Forest/additional waters are future stages."
+  ]
+}
