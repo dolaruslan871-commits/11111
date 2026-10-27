@@ -55,11 +55,12 @@ function plaque(g,wood,trim,p,shape="paw") {
     for(let i=0;i<3;i++)sphere(g,trim,[p[0]+(i-1)*.035,p[1]+.025+((i===1)?.012:0),p[2]+.027],[.012,.016,.007]);
   }
 }
-export function makeHome(skin="dog", life={}) {
+export function makeHome(skin="dog", life={}, appearance={}) {
   const status=homeStatus(life),root=new T.Group(),layers=[];
   root.name=`home-${skin}`;root.userData={skin,...status};
-  const timber=surface("#bd885a"),lightWood=surface("#e2ba86"),darkWood=surface("#795741"),stone=surface("#8b9ba6","stone"),sand=surface("#cfbda0","stone");
-  const cloth=surface(skin==="husky"?"#7b9fb7":skin==="cat"?"#c598ae":"#e4c5a5","cloth"),cream=surface("#f3e3c9","cloth");
+  const base=new T.Color(appearance.houseColor||'#bd885a');
+  const timber=surface(base),lightWood=surface(base.clone().lerp(new T.Color('#fff4dc'),.42)),darkWood=surface(base.clone().multiplyScalar(.48)),stone=surface(base.clone().lerp(new T.Color('#8b9ba6'),.55),'stone'),sand=surface('#cfbda0','stone');
+  const cloth=surface(appearance.houseAccent || (skin==="husky"?"#7b9fb7":skin==="cat"?"#c598ae":"#e4c5a5"),"cloth"),cream=surface("#f3e3c9","cloth");
   const green=new T.MeshStandardMaterial({color:"#658c63",roughness:.93}),leafGreen=new T.MeshStandardMaterial({color:"#8cad72",roughness:.9});
   const gold=new T.MeshPhysicalMaterial({color:"#d3ae6d",metalness:.55,roughness:.3});
   const flowerMat=new T.MeshStandardMaterial({color:"#d9a7b6"});
@@ -132,5 +133,6 @@ export function makeHome(skin="dog", life={}) {
   // Unused materials (different species' props) are disposed immediately.
   const used=new Set();root.traverse(o=>{if(o.material)used.add(o.material);});
   for(const mat of [timber,lightWood,darkWood,stone,sand,cloth,cream,green,leafGreen,gold,flowerMat])if(!used.has(mat)){for(const v of Object.values(mat))if(v?.isTexture)v.dispose();mat.dispose();}
+  root.userData.palette={structure:base.getHexString(),accent:appearance.houseAccent||null};
   return root;
 }

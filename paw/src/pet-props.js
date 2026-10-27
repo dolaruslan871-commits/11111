@@ -280,17 +280,7 @@ export function makeProps(root) {
       0.055,
       0.035,
     );
-  g = group("build");
-  line(
-    g,
-    "#ad805e",
-    [
-      [0.5, 0.3, 0.8],
-      [0.5, 0.95, 0.8],
-    ],
-    0.035,
-  );
-  box(g, "#8d99aa", 0.5, 1, 0.8, 0.3, 0.12, 0.12);
+  g = group("build"); // Building is expressed by the pet, without a hammer.
   g = group("house");
   g.position.set(-0.85, 0, -0.3);
   g = group("box");

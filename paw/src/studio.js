@@ -1,3 +1,4 @@
+import {ACTIONS} from './activity-policy.js';
 import { exportVideo } from "./video-export.js";
 import { v, escapeHTML as esc } from "./v5-ui.js";
 export const studioActions = [
@@ -29,6 +30,12 @@ export const studioActions = [
   "wave",
 ];
 const titles = {
+  sleep:["Лежать и спать","Лежати й спати","Lie down & sleep"],
+  "ear-scratch":["Чесать ушко","Чухати вушко","Scratch ear"],
+  "nose-boop":["Фыркнуть","Пирхнути","Snort"],
+  float:["Невесомость","Невагомість","Float"],
+  draw:["Рисовать","Малювати","Draw"], fish:["Рыбачить","Рибалити","Fish"], butterflies:["Бабочки","Метелики","Butterflies"], ball:["Мячик","М’ячик","Ball"],
+  detective:["Исследовать","Досліджувати","Explore"],gift:["Подарок","Подарунок","Gift"],build:["Строить","Будувати","Build"],home:["Отдых дома","Відпочинок удома","Rest at home"],umbrella:["Зонтик","Парасолька","Umbrella"],fan:["Веер","Віяло","Fan"],read:["Читать","Читати","Read"],gamepad:["Играть на приставке","Грати на приставці","Gamepad"],cake:["Праздновать","Святкувати","Celebrate"],attention:["Просить внимания","Просити уваги","Seek attention"],drink:["Пить","Пити","Drink"],break:["Отдыхать","Відпочивати","Take a break"],eat:["Кушать","Їсти","Eat"],carry:["Нести","Нести","Carry"],
   excited: ["Восторг", "Захват", "Excited"],
   sad: ["Грусть", "Сум", "Sad"],
   angry: ["Сердиться", "Сердитися", "Angry"],

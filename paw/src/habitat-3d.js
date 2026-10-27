@@ -22,10 +22,10 @@ export function mountHabitat3D(container,initial,kind) {
   function resize(){if(disposed)return;const w=container.clientWidth||280,h=container.clientHeight||240,zoom=kind==="toy"?.55:1.02;camera.left=-zoom*w/h;camera.right=zoom*w/h;camera.top=zoom;camera.bottom=-zoom;camera.updateProjectionMatrix();renderer.setSize(w,h,false);draw();}
   function update(next){
     state=next;
-    const key=kind==="house"?`${state.skin}:${state.life?.house}:${state.life?.homeUpgrades}`:state.outfit?.toy;
+    const key=kind==="house"?`${state.skin}:${state.life?.house}:${state.life?.homeUpgrades}:${state.houseColor}:${state.houseAccent}`:state.outfit?.toy;
     if(key===signature)return;signature=key;
     if(root){scene.remove(root);disposeHome(root);}
-    root=kind==="house"?makeHome(state.skin,state.life):makeGroundToy(state.outfit);
+    root=kind==="house"?makeHome(state.skin,state.life,state):makeGroundToy(state.outfit);
     if(kind==="toy"){root.position.y=.4;camera.lookAt(0,.4,0);}scene.add(root);
     container.dataset.skin=state.skin;container.dataset.kind=kind;container.dataset.renderer="webgl";
     draw();

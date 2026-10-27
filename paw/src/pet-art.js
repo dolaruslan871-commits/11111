@@ -194,6 +194,7 @@ function wardrobeDrawing(category, meta) {
     return base+detail;
   }
   if (category === 'accessory') {
+    if(id==='starter-star')return `<polygon points="${star(32,34,25)}" fill="${c}" stroke="${a}" stroke-width="2"/>`+circle(32,7,4,a);
     if (id === 'wings' || id === 'bat-wings') return path(id === 'bat-wings' ? 'M31 31 19 10 2 16 8 38l9-5 5 14 10-9 10 9 5-14 9 5 6-22-17-6-12 21Z' : 'M32 33Q17 2 5 14q-10 20 22 29Q6 38 13 52q14 8 19-15 5 23 19 15 7-14-14-9 32-9 22-29Q47 2 32 33Z') + line('M32 33 14 21m18 12 18-12', a, 2);
     if (id === 'cape') return path('M22 10h20l15 45q-25-10-50 0Z') + path('M23 10q9 12 18 0l-9 20Z', a);
     if (id === 'halo') return `<ellipse cx="32" cy="27" rx="25" ry="10" fill="none" stroke="${c}" stroke-width="6"/>` + line('M18 11v-5m28 5 3-5', a, 2);

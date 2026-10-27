@@ -54,7 +54,7 @@ export function mountRadialMenu(host, api, getState, notify = () => {}) {
         ([id, glyph, title]) =>
           `<button class="utility-row" data-panel="${id}"><span class="utility-symbol">${glyph}</span><strong>${w(title)}</strong><span class="utility-state">›</span></button>`,
       )
-      .join("")}<div class="quick-toggles">${[
+      .join("")}<button id="quick-pause" class="utility-row"><span class="utility-symbol">${s.roaming?'Ⅱ':'▶'}</span><strong>${s.language==='en'?(s.roaming?'Pause walking':'Resume walking'):s.language==='uk'?(s.roaming?'Зупинити прогулянки':'Відновити прогулянки'):(s.roaming?'Остановить прогулки':'Продолжить прогулки')}</strong></button><button id="quick-wardrobe" class="utility-row"><span class="utility-symbol">✦</span><strong>${w('Гардероб')}</strong></button><div class="quick-toggles">${[
       ["audio", "volume", "Звук"],
       ["bluetooth", "bluetooth", "Bluetooth"],
     ]
@@ -64,14 +64,17 @@ export function mountRadialMenu(host, api, getState, notify = () => {}) {
       )
       .join(
         "",
-      )}</div><button class="utility-row" data-panel="weather"><span class="utility-symbol">☁</span><strong>${s.language === "en" ? "Weather" : s.language === "uk" ? "Погода" : "Погода"}</strong><span id="quick-weather" class="utility-state">…</span></button><button class="utility-row" id="quick-studio"><span class="utility-symbol">◉</span><strong>${w("Съёмка")}</strong></button><button class="utility-row" id="dashboard"><span class="utility-symbol">⚙</span><strong>${w("Основное меню")}</strong></button><button class="utility-row utility-quit" id="quit-paw"><span class="utility-symbol">⏻</span><strong>${esc(t("Выйти из Paw",s.language))}</strong></button><p id="widget-error" role="status"></p></section><aside id="quick-panel-host" hidden></aside>`;
+      )}</div><button class="utility-row" data-panel="weather"><span class="utility-symbol">☁</span><strong>${s.language === "en" ? "Weather" : s.language === "uk" ? "Погода" : "Погода"}</strong><span id="quick-weather" class="utility-state">…</span></button><button class="utility-row" id="quick-studio"><span class="utility-symbol">◉</span><strong>${w("Съёмка")}</strong></button><button class="utility-row" id="dashboard"><span class="utility-symbol">⚙</span><strong>${w("Основное меню")}</strong></button><button class="utility-row" id="quick-settings"><span class="utility-symbol">⚙</span><strong>${s.language==='en'?'Settings':s.language==='uk'?'Налаштування':'Настройки'}</strong></button><button class="utility-row utility-quit" id="quit-paw"><span class="utility-symbol">⏻</span><strong>${esc(t("Выйти из Paw",s.language))}</strong></button><p id="widget-error" role="status"></p></section><aside id="quick-panel-host" hidden></aside>`;
     host.querySelector("#quit-paw").onclick = async (event) => {
       event.currentTarget.disabled=true;
       try {await api.quit();}
       catch {if(!disposed){event.target.closest("button").disabled=false;notify(t("Не удалось выполнить действие.",s.language));}}
     };
     host.querySelector(".utility-close").onclick = () => api.closeMenu();
+    host.querySelector('#quick-pause').onclick=async()=>{await api.update({roaming:!getState().roaming});signature='';render();};
+    host.querySelector('#quick-wardrobe').onclick=()=>api.dashboard('wardrobe');
     host.querySelector("#quick-studio").onclick=()=>api.dashboard("studio");
+    host.querySelector("#quick-settings").onclick=()=>api.dashboard("settings");
     host.querySelector("#dashboard").onclick = () => api.dashboard("home");
     host.querySelectorAll("[data-panel]").forEach(
       (e) =>
@@ -282,7 +285,7 @@ export function mountRadialMenu(host, api, getState, notify = () => {}) {
         s.shortcuts,
         s.browser,
         s.player,
-        s.names,
+        s.names, s.roaming,
       ]);
       if (!open || menuSession !== s.menuSession || key !== signature) {
         if (!open || menuSession !== s.menuSession) {panel=null;generation++;}

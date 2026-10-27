@@ -9,7 +9,7 @@ let state = await api.getState(),
   moved = false,
   noticeTimer;
 document.body.innerHTML =
-  '<div id="floating-world"><div id="floating-pet" class="pet-hitbox" role="button" tabindex="0" aria-label="Paw"></div><div id="pet-prey"></div><div id="pet-bubble" role="status"></div><div id="radial-host"></div><span id="trash-destination" aria-hidden="true">♻</span></div>';
+  '<div id="floating-world"><span class="dock-paw" aria-hidden="true">🐾</span><div id="floating-pet" class="pet-hitbox" role="button" tabindex="0" aria-label="Paw"></div><div id="pet-prey"></div><div id="pet-bubble" role="status"></div><div id="radial-host"></div><span id="trash-destination" aria-hidden="true">♻</span></div>';
 const world = document.querySelector("#floating-world"),
   pet = document.querySelector("#floating-pet"),
   bubble = document.querySelector("#pet-bubble");
@@ -19,6 +19,8 @@ const interactions = createPetInteractions((name) => api.action(name));
 function update() {
   document.documentElement.dataset.theme = state.theme || "light";
   document.documentElement.lang = state.language || "ru";
+  world.classList.toggle("pet-docked", !!state.docked);
+  world.style.opacity = state.petOpacity ?? 1;
   world.style.transform = `scale(${state.scale || 1})`;
   world.classList.toggle("menu-open", !!state.menuOpen);
   world.classList.toggle("is-carrying", state.activity === "carry");
@@ -28,16 +30,13 @@ function update() {
   if (state.notice && state.notice.at !== noticeAt) {
     noticeAt = state.notice.at;
     bubble.textContent =
-      { timer: "⏰", task: "🔔", gift: "🎁", game: "🪙" }[state.notice.kind] ||
+      { timer: "⏰", task: "🔔", gift: "🎁", game: "🪙", update: "⬆" }[state.notice.kind] ||
       "";
     bubble.title = state.notice.text || "";
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => (bubble.textContent = ""), 7000);
   }
-  pet.style.clipPath =
-    state.activity === "hide" && state.behavior?.windowInteraction
-      ? "inset(0 0 40% 0)"
-      : "";
+  pet.style.clipPath = "";
   world.querySelector(".drawing-overlay")?.remove();
   if (state.activity === "draw") {
     const ink = document.createElement("span");
@@ -142,6 +141,7 @@ pet.onpointercancel = (event) => finishPickup(event, true);
 pet.onlostpointercapture = () => finishPickup(null, true);
 window.addEventListener("blur", () => finishPickup(null, true));
 pet.ondblclick = (event) => {
+  if(state.docked){void api.update({docked:false});return;}
   if (moved || state.menuOpen || performance.now() < suppressDoubleUntil) return;
   event.preventDefault();
   interactions.doubleTap(scene.hitTest?.(event.clientX, event.clientY) || "body");
@@ -183,6 +183,7 @@ window.addEventListener("beforeunload", () => {
 update();
 
 setInterval(() => {
+  if(state.docked){void api.visualBounds({x:188,y:290,width:54,height:54});return;}
   if (scene.measure) {
     const bounds = scene.measure();
     const k = state.scale || 1;

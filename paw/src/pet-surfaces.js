@@ -126,7 +126,7 @@ export function createSurfaces(skin, palette, quality = {}) {
     }
     return fabrics.get(key);
   }
-  return {mats, wardrobe, mammal, eyes: new Map(), quality};
+  return {mats, wardrobe, mammal, eyes: new Map(), quality,eyeColor:palette.eye};
 }
 
 export function makeEyes(eye, skin, quality = {}, library = {}) {
@@ -137,7 +137,7 @@ export function makeEyes(eye, skin, quality = {}, library = {}) {
     const [c, ctx] = canvas(irisSize), rng = random(38);
     ctx.scale(irisSize / 256, irisSize / 256);
     const iris = ctx.createRadialGradient(128, 128, 20, 128, 128, 126);
-    iris.addColorStop(0, "#101a24"); iris.addColorStop(.25, colors[skin] || colors.dog); iris.addColorStop(.7, colors[skin] || colors.dog); iris.addColorStop(.92, "#344754"); iris.addColorStop(1, "#152531");
+    iris.addColorStop(0, "#101a24"); iris.addColorStop(.25, library.eyeColor || colors[skin] || colors.dog); iris.addColorStop(.7, library.eyeColor || colors[skin] || colors.dog); iris.addColorStop(.92, "#344754"); iris.addColorStop(1, "#152531");
     ctx.fillStyle = iris; ctx.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 540; i++) {
       const a = rng() * Math.PI * 2, r = 35 + rng() * 38;
@@ -149,21 +149,30 @@ export function makeEyes(eye, skin, quality = {}, library = {}) {
   }
   const segments = quality.id === "ultra" ? 56 : quality.id === "low" ? 24 : 40;
   const sclera = new THREE.Mesh(new THREE.SphereGeometry(1, segments, Math.round(segments * .7)), new THREE.MeshPhysicalMaterial({ color: "#fff8ed", roughness: .23, clearcoat: .8, clearcoatRoughness: .13, envMapIntensity: .75 }));
-  sclera.scale.set(.126, .146, .057); eye.add(sclera);
+  sclera.scale.set(.119, skin === "cat" ? .108 : .132, .027); eye.add(sclera);
   const irisGeometry = new THREE.CircleGeometry(1, segments);
   const irisPoints = irisGeometry.attributes.position;
   for (let i = 0; i < irisPoints.count; i++) irisPoints.setZ(i, -.004 * (1 - irisPoints.getX(i) ** 2 - irisPoints.getY(i) ** 2));
   irisGeometry.computeVertexNormals();
   const iris = new THREE.Mesh(irisGeometry, new THREE.MeshPhysicalMaterial({ map: irisTexture, roughness: .28, clearcoat: .45, envMapIntensity: .6 }));
-  iris.scale.set(.096, .112, 1); iris.position.set(0, -.004, .063); eye.add(iris);
+  iris.scale.set(.097, skin === "cat" ? .093 : .11, 1); iris.position.set(0, -.004, .031); eye.add(iris);
   const pupil = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshPhysicalMaterial({ color: "#06101a", roughness: .12, clearcoat: .9, envMapIntensity: .7 }));
-  pupil.position.set(0, -.005, .069); pupil.scale.set(skin === "cat" ? .039 : .05, .073, .009); eye.add(pupil);
+  pupil.position.set(0, -.005, .036); pupil.scale.set(skin === "cat" ? .039 : .05, .073, .004); eye.add(pupil);
   const cornea = new THREE.Mesh(new THREE.SphereGeometry(1, segments, 24), new THREE.MeshPhysicalMaterial({ color: "#ffffff", roughness: .035, clearcoat: 1, clearcoatRoughness: .025, ior: 1.38, transparent: true, opacity: .12, depthWrite: false, envMapIntensity: 1.5 }));
-  cornea.scale.set(.101, .117, .028); cornea.position.set(0, -.004, .062); eye.add(cornea);
+  cornea.scale.set(.101, skin === "cat" ? .096 : .117, .014); cornea.position.set(0, -.004, .032); eye.add(cornea);
   for (const [x, y, radius] of [[-.028, .044, .019], [.03, -.032, .006]]) {
     const glint = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false }));
-    glint.position.set(x, y, .092); glint.scale.set(radius, radius * 1.35, .005); eye.add(glint);
+    glint.position.set(x, y, .047); glint.scale.set(radius, radius * 1.35, .005); eye.add(glint);
   }
+  // Thin orbital rims sit in the fur; they frame a shallow cornea, rather than
+  // mounting a full eyeball on the outside of the face.
+  for(const upper of [true,false]) {
+    const lid=new THREE.Mesh(new THREE.TorusGeometry(1,.065,6,32,Math.PI),library.mats?.fur || sclera.material);
+    lid.scale.set(.121,skin==='cat'?.111:.135,.075);lid.position.z=.015;
+    if(!upper)lid.rotation.z=Math.PI;
+    eye.add(lid);
+  }
+  eye.userData.corneaDepth=.046;
   eye.userData.iris = iris; eye.userData.pupil = pupil;
   eye.userData.noSurfaceDetail = true;
 }

@@ -23,10 +23,13 @@ export function appearancePanel(state) {
       lavender: ["Лаванда", "Лаванда", "Lavender"],
       rose: ["Роза", "Троянда", "Rose"],
       sand: ["Песок", "Пісок", "Sand"],
+      black: ["Чёрная", "Чорна", "Black"],
+      midnight: ["Полночь", "Північ", "Midnight"],
+      plum: ["Тёмная слива", "Темна слива", "Dark plum"],
       coffee: ["Кофе", "Кава", "Coffee"],
     },
     i = state.language === "en" ? 2 : state.language === "uk" ? 1 : 0;
-  return `<section class="life-card appearance-v5"><h2>${state.language === "en" ? "Appearance" : state.language === "uk" ? "Оформлення" : "Оформление"}</h2><div class="theme-swatches">${THEMES.map((theme) => `<button data-theme="${theme}" class="theme-${theme}" aria-pressed="${state.theme === theme}"><i></i>${label[theme][i]}</button>`).join("")}</div><div class="behavior-grid"><label class="checkbox-row"><input type="checkbox" id="v5-glass" ${state.glass !== false ? "checked" : ""}>${w("Эффект стекла")}</label><label>${w("Прозрачность окон")}<input id="v5-window-opacity" type="range" min="0.65" max="1" step="0.01" value="${state.windowOpacity ?? 1}"></label><label>${w("Прозрачность стекла")}<input id="v5-glass-opacity" type="range" min="0.55" max="1" step="0.01" value="${state.glassOpacity ?? 0.9}"></label><label class="checkbox-row"><input id="v5-house" type="checkbox" ${state.showHouse !== false ? "checked" : ""}>${w("Показывать домик")}</label></div><p class="feature-hint">${w("Домик остаётся в углу экрана.")}</p></section>`;
+  return `<section class="life-card appearance-v5"><h2>${state.language === "en" ? "Appearance" : state.language === "uk" ? "Оформлення" : "Оформление"}</h2><div class="theme-swatches">${THEMES.map((theme) => `<button data-theme="${theme}" class="theme-${theme}" aria-pressed="${state.theme === theme}"><i></i>${label[theme][i]}</button>`).join("")}</div><div class="behavior-grid"><label class="checkbox-row"><input type="checkbox" id="v5-glass" ${state.glass !== false ? "checked" : ""}>${w("Эффект стекла")}</label><label>${w("Прозрачность окон")}<input id="v5-window-opacity" type="range" min="0.65" max="1" step="0.01" value="${state.windowOpacity ?? 1}"></label><label>${w("Прозрачность стекла")}<input id="v5-glass-opacity" type="range" min="0.55" max="1" step="0.01" value="${state.glassOpacity ?? 0.9}"></label></div></section>`;
 }
 export function identityPanel(state, fallback) {
   const w = (t) => esc(v(t, state.language));

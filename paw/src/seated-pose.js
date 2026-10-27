@@ -1,5 +1,5 @@
 import * as THREE from "./vendor/three.module.js";
-const SEATED = new Set(["sit","groom","yawn","eat","grateful"]);
+const SEATED = new Set(["sit","groom","yawn","grateful"]);
 const mix = (a,b,t) => a+(b-a)*t;
 const hinge = new THREE.Vector3(1,0,0);
 

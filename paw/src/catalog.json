@@ -1003,6 +1003,19 @@
         "color": "#b3967a",
         "accent": "#f8e7c8",
         "price": 30
+      },
+      {
+        "id": "starter-star",
+        "name": "Звёздочка дружбы",
+        "names": {
+          "uk": "Зірочка дружби",
+          "en": "Friendship star"
+        },
+        "color": "#f5cc65",
+        "accent": "#fff1bb",
+        "shape": "starter-star",
+        "price": 0,
+        "guideOnly": true
       }
     ]
   },

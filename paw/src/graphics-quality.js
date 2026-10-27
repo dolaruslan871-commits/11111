@@ -34,8 +34,8 @@ export const GRAPHICS_PROFILES = Object.freeze({
   high: profile({
     id: "high",
     detailFactor: 1.65,
-    furDensity: 1600,
-    maxFur: 6500,
+    furDensity: 2200,
+    maxFur: 9000,
     textureSize: 1024,
     irisSize: 512,
     shadowSize: 1024,
@@ -48,8 +48,8 @@ export const GRAPHICS_PROFILES = Object.freeze({
   ultra: profile({
     id: "ultra",
     detailFactor: 2,
-    furDensity: 3000,
-    maxFur: 12000,
+    furDensity: 3800,
+    maxFur: 15000,
     textureSize: 1024,
     irisSize: 1024,
     shadowSize: 2048,
@@ -97,6 +97,7 @@ export function graphicsProfile(state = {}, context = {}) {
       context.essentialMotion === true ? 30 : 15,
     );
   }
+  if (context.idleSaving === true) result.maxFPS = Math.min(result.maxFPS, 15);
   if (context.hidden === true) result.maxFPS = 0;
   return result;
 }

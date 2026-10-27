@@ -44,25 +44,19 @@ export function applyPoseV5(pet, state, time, reduced = false) {
     pet.ageFur.scale.setScalar(0.8 + growth * 0.2);
   }
   if (sleep) {
-    pet.root.position.y = bird ? 0 : -0.4;
-    pet.torso.rotation.set(bird ? 0 : 0.12, bird ? 0 : 0.38, bird ? 0 : 1.05);
-    pet.torso.scale.y = bird ? 1 : 0.78;
-    pet.head.position.y = bird ? pet.headBase.y - 0.1 : 0.98;
-    pet.head.position.z = bird ? pet.headBase.z : 0.29;
-    pet.head.position.x = bird ? 0 : 0.22;
-    pet.head.rotation.set(0.38, bird ? 0.3 : 0.65, -0.1);
-    pet.tail.rotation.set(0.4, -1.2, bird ? 0 : 0.3);
-    for (const leg of pet.legs) {
-      leg.pivot.rotation.x = bird ? 0 : leg.front ? -1.0 : 1.1;
-      if (!bird) leg.pivot.position.y -= 0.16;
+    pet.root.position.y=0;
+    pet.torso.visible=true;pet.torso.scale.x=pet.torso.scale.z=1;
+    pet.torso.position.set(0,bird?-.08:-.35,bird?0:.1);
+    pet.torso.rotation.set(bird?0:.03,bird?0:.08,0);
+    pet.torso.scale.y=bird?1:.88;
+    pet.head.position.set(bird?0:.04,bird?pet.headBase.y-.08:.82,bird?pet.headBase.z:.85);
+    pet.head.rotation.set(.12,bird?.15:.22,.06);
+    pet.tail.rotation.set(.12,-.9,-.05);
+    for(const leg of pet.legs){
+      if(bird)continue;
+      leg.pivot.rotation.set(leg.front?-1.2:1.15,0,leg.side*.06);
+      leg.foot.rotation.x=-leg.pivot.rotation.x;
     }
-    if (bird)
-      pet.legs
-        .filter((l) => !l.front)
-        .forEach((l, i) => {
-          l.pivot.position.y += i ? 0.17 : 0;
-          if (i) l.pivot.rotation.x = 0.8;
-        });
   }
   if (a === "wave") {
     pet.torso.rotation.x = 0;
@@ -81,9 +75,29 @@ export function applyPoseV5(pet, state, time, reduced = false) {
     pet.tongue.visible = Math.sin(time * 9) > 0;
     pet.jaw.rotation.x = Math.max(0, Math.sin(time * 9)) * 0.15;
   }
-  if (a === "eat" && state.meal) {
-    pet.head.position.y = pet.headBase.y - 0.18;
-    pet.head.rotation.x = 0.45 + Math.sin(time * 11) * 0.09;
+  if (a === "eat") {
+    const lean=.5-.5*Math.cos(Math.min(1,(state.actionTime||0)/.85)*Math.PI);
+    pet.torso.rotation.x=.10*lean;pet.torso.position.y=-.06*lean;
+    // Reach past the forepaws. The nose stops above the rim, never inside it.
+    const height=skin==='croc'?.56:skin==='owl'?.72:biped?.78:skin==='cat'?.70:skin==='rabbit'?.86:.83;
+    const reach=skin==='croc'?.99:skin==='owl'?.96:biped?.99:skin==='cat'?1.15:1.26;
+    pet.head.position.y=pet.headBase.y+(height-pet.headBase.y)*lean;
+    pet.head.position.z=pet.headBase.z+(reach-pet.headBase.z)*lean;
+    pet.head.rotation.set((skin==='croc'?.32:skin==='cat'?.62:.65)*lean+Math.sin(time*7)*.018*lean,0,0);
+    pet.jaw.rotation.x=(.055+Math.sin(time*11)*.025)*lean;
+    pet.crumbs.visible=false;pet.tongue.visible=false;
+  }
+  if(a==='ear-scratch'){
+    const arm=pet.legs.find(l=>l.front&&l.side===1);
+    if(arm){arm.pivot.rotation.x=-2.75+Math.sin(time*18)*.12;arm.pivot.rotation.z=-.35;arm.pivot.position.y+=.27;arm.pivot.position.z+=.12;}
+    pet.head.rotation.z=.22;pet.head.rotation.y=.28;
+    if(pet.ears[1])pet.ears[1].rotation.z+=Math.sin(time*18)*.08;
+  }
+  if(a==='nose-boop'){
+    const pulse=Math.exp(-(state.actionTime||0)*1.8);
+    pet.head.position.z-=.08*pulse;pet.head.rotation.y+=Math.sin(time*38)*.12*pulse;
+    pet.ears.forEach((e,i)=>e.rotation.z+=(i?1:-1)*.1*pulse);
+    pet.jaw.rotation.x=.05;
   }
   if (a === "groom" && bird) {
     pet.head.rotation.y = -0.8;
@@ -123,8 +137,10 @@ export function applyPoseV5(pet, state, time, reduced = false) {
     pet.head.rotation.y = Math.sin(time * 22 + 0.4) * 0.2;
   }
   if (a === "roll") {
-    pet.torso.rotation.z = time * 2;
-    pet.root.position.y = -0.18;
+    const p=Math.min(1,(state.actionTime||0)/1.65), ease=p*p*(3-2*p);
+    pet.torso.rotation.z = reduced ? 0 : ease*Math.PI*2;
+    pet.root.position.y = .12*Math.sin(p*Math.PI);
+    for(const leg of pet.legs)leg.pivot.rotation.x=leg.front?-1.1:1.05;
   }
   if (a === "grateful") {
     pet.head.rotation.x = Math.sin(time * 4) * 0.15;
@@ -192,10 +208,11 @@ export function applyPoseV5(pet, state, time, reduced = false) {
           (ear.userData.baseZ || 0) + Math.sin(time * 4 + i) * 0.035),
     );
   }
-  pet.love.position.set(0.2, 0.25, 0.3);
+  pet.love.position.set(.35, .65, -.15);
   pet.love.children.forEach((heart, i) => {
     heart.position.x = (i - 1) * 0.45;
-    heart.position.y = 2.05 + Math.sin(time * 2 + i) * 0.12;
+    heart.position.y = 2.15 + (i%2)*.15 + Math.sin(time * 2 + i) * 0.12;
+    heart.scale.setScalar(.7);
   });
   const resting = REST.has(a) || a === "play";
   pet.toy.visible =

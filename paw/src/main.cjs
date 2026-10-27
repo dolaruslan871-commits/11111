@@ -1,3 +1,4 @@
+const activityPolicy = require('./activity-policy.cjs');
 const { widgetLayout } = require("./widget-layout.cjs");
 const desktopMotion = require("./desktop-motion.cjs");
 const { buildHome } = require("./home-model.cjs");
@@ -13,7 +14,9 @@ const {
   nativeImage,
   desktopCapturer,
   powerMonitor,
+  globalShortcut,
 } = require("electron");
+const desktopPrefs = require("./desktop-preferences.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const {
@@ -29,6 +32,32 @@ const weather = createWeather();
 const V5 = require("./v5-model.cjs");
 const { registerV5, createDesktopShortcut } = require("./v5-services.cjs");
 const gameEngine = require("./game-engine.cjs").createGameEngine();
+let hotkeyRegistered = false, dndHidden = false, manualHidden = false, dndPending = false, lastDndPoll = 0, habitatDragging = null;
+const desktopCopy = (ru,uk,en) => preferences?.language==='en'?en:preferences?.language==='uk'?uk:ru;
+function selectedDisplay(){return screen.getAllDisplays().find(d=>String(d.id)===preferences?.displayId)||screen.getPrimaryDisplay();}
+function resetPetPosition(){
+ if(!petWindow||petWindow.isDestroyed())return;
+ resetDesktopMotion();const area=selectedDisplay().workArea,b=petWindow.getBounds();
+ const p=petClamp({x:area.x+area.width-b.width-30,y:area.y+area.height-b.height},area);
+ petWindow.setPosition(p.x,p.y);motion=desktopMotion.newMotion(p,Date.now());setActivity("idle");showPet();
+}
+function registerHotkey(){
+ globalShortcut.unregisterAll();hotkeyRegistered=!preferences.hotkey;
+ if(preferences.hotkey)try{hotkeyRegistered=globalShortcut.register(preferences.hotkey,()=>{if(petWindow?.isVisible()){manualHidden=true;closeMenu();petWindow.hide();houseWindow?.hide();toyWindow?.hide();}else showPet();});}catch{hotkeyRegistered=false;}
+}
+async function checkUpdates(){
+ const r=await desktopPrefs.checkRelease(app.getVersion());
+ const message=!r.ok?desktopCopy("Не удалось проверить обновления. Попробуй позже.","Не вдалося перевірити оновлення. Спробуй пізніше.","Could not check for updates. Try again later."):r.available?desktopCopy("Доступна новая версия Paw: ","Доступна нова версія Paw: ","A new Paw version is available: ")+r.version:desktopCopy("Установлена актуальная версия Paw.","Встановлено актуальну версію Paw.","Paw is up to date.");
+ if(r.available&&preferences.updateNotifications)announce("update",message);
+ return {...r,message};
+}
+async function openUninstall(){
+ // Open the OS uninstall interface; never delete user files or execute a remote path.
+ if(process.platform==='win32')await shell.openExternal('ms-settings:appsfeatures');
+ else if(process.platform==='darwin')shell.showItemInFolder(path.resolve(process.execPath,'../../..'));
+ else shell.showItemInFolder(process.env.APPIMAGE||process.execPath);
+ return {ok:true};
+}
 let menuAnchor = null, menuArea = null, menuDialogDepth = 0, menuSession = 0;
 let menuWindow = null,
   houseWindow = null,
@@ -118,14 +147,14 @@ function openWidget() {
   if (menuWindow.isVisible()) menuWindow.focus();
 }
 function habitatWindow(kind) {
-  const area = screen.getPrimaryDisplay().workArea,
+  const area = selectedDisplay().workArea,
     size =
       kind === "house"
-        ? { width: 280, height: 240 }
+        ? { width: Math.round(280 * preferences.houseScale), height: Math.round(240 * preferences.houseScale) }
         : { width: 200, height: 140 };
   const pos = clampPosition(
     kind === "house"
-      ? {
+      ? preferences.housePosition || {
           x: area.x + area.width - size.width - 10,
           y: area.y + area.height - size.height - 8,
         }
@@ -148,14 +177,14 @@ function habitatWindow(kind) {
     focusable: false,
     webPreferences,
   });
-  win.setIgnoreMouseEvents(true);
+  win.setIgnoreMouseEvents(kind !== "house");
   secureWindow(win);
   win.loadFile(path.join(__dirname, "habitat.html"), { query: { kind } });
   return win;
 }
 function syncHabitat() {
   if (!life || quitting) return;
-  const show = preferences.showHouse && life.house >= 10;
+  const show = preferences.showHouse && life.house >= 10 && !manualHidden && !dndHidden && !!petWindow?.isVisible();
   if (show) {
     if (!houseWindow || houseWindow.isDestroyed())
       houseWindow = habitatWindow("house");
@@ -173,7 +202,7 @@ function syncHabitat() {
       "grateful",
     ].includes(activity),
     hasToy = preferences.outfit.toy && preferences.outfit.toy !== "none";
-  if (rests && hasToy) {
+  if (rests && hasToy && !manualHidden && !dndHidden && petWindow?.isVisible()) {
     if (!toyAnchor && petWindow) {
       const b = petWindow.getBounds();
       toyAnchor = {
@@ -246,6 +275,7 @@ function saveProgress() {
   return progressQueue;
 }
 function announce(kind, text = "") {
+  if (lifeAPI.quiet(preferences.behavior, new Date())) return;
   notice = { kind, text, at: Date.now() };
   broadcast();
 }
@@ -318,6 +348,8 @@ const effectivePetScale = () => preferences?.scale || 1;
 const state = () => ({
   ...preferences,
   version: app.getVersion(),
+  hotkeyRegistered,
+  displays: screen.getAllDisplays().map((d,i)=>({id:String(d.id),label:d.label||`Display ${i+1}`,width:d.size.width,height:d.size.height})),
   life: life ? progress() : null,
   weather: weatherValue,
   battery: batteryValue,
@@ -384,8 +416,8 @@ function save() {
     .catch((error) => console.error("Preferences save failed:", error.message));
   return saveQueue;
 }
-function setActivity(value, duration = 8500) {
-  activity = value;
+function setActivity(value, duration = 8500, temporary = false) {
+  activity = activityPolicy.resolveActivity(value, preferences, temporary);
   activityUntil = Date.now() + duration;
   broadcast();
 }
@@ -398,7 +430,9 @@ async function update(patch, { allowShortcut = false } = {}) {
     delete patch.shortcuts;
     delete patch.browser;
     delete patch.player;
+    delete patch.guideReward;
   }
+  const previousHouseScale = preferences.houseScale;
   const previousScale = preferences.scale;
   const previousToy = preferences.outfit.toy,
     previousDistance = preferences.toyDistance;
@@ -410,6 +444,7 @@ async function update(patch, { allowShortcut = false } = {}) {
   };
   for (const [category, id] of Object.entries(merged.outfit)) {
     const item = catalog.wardrobe[category]?.find((x) => x.id === id);
+    if (item?.guideOnly && !preferences.guideReward) merged.outfit[category] = preferences.outfit[category];
     if (item?.price && !life.gifts.includes(category + ":" + id))
       merged.outfit[category] = preferences.outfit[category];
   }
@@ -426,6 +461,12 @@ async function update(patch, { allowShortcut = false } = {}) {
     dashboard.setOpacity(preferences.windowOpacity);
   if (menuWindow && process.platform !== "linux")
     menuWindow.setOpacity(preferences.windowOpacity);
+  if (previousHouseScale !== preferences.houseScale && houseWindow && !houseWindow.isDestroyed()) {
+    const b=houseWindow.getBounds(),area=screen.getDisplayMatching(b).workArea;
+    const size={width:Math.round(280*preferences.houseScale),height:Math.round(240*preferences.houseScale)};
+    const pos=clampPosition({x:b.x,y:b.y+b.height-size.height},area,size);
+    houseWindow.setBounds({...pos,...size});preferences.housePosition=pos;
+  }
   syncHabitat();
   nativeAppearance(dashboard);
   nativeAppearance(menuWindow);
@@ -436,6 +477,17 @@ async function update(patch, { allowShortcut = false } = {}) {
     app.setLoginItemSettings({ openAtLogin: preferences.autostart });
   if (patch.weatherCity !== undefined) void refreshEnvironment();
   if (preferences.scale !== previousScale) resizePet();
+  if(patch.hotkey !== undefined)registerHotkey();
+  if(patch.displayId !== undefined)resetPetPosition();
+  if(patch.parachuteEnabled === false){resetDesktopMotion();setActivity("idle");}
+  if(patch.roaming === false || patch.allowedActivities !== undefined){
+    stopTransport();setActivity(activity);
+  }
+  const traitKey=Object.keys(patch.behavior || {}).find(k=>['active','lazy','curious','walkFrequency','attentionFrequency'].includes(k));
+  if(traitKey && !feeding && !dragging && motion.phase==='grounded')
+    setActivity(activityPolicy.personalityActivity(traitKey, preferences.behavior), 6500);
+  
+  if(patch.smartDnd === false && dndHidden){dndHidden=false;if(!manualHidden)showPet();}
   if (patch.welcomeVersion === "0.5") showPet();
   if (petWindow && !petWindow.isDestroyed())
     petWindow.setAlwaysOnTop(preferences.alwaysOnTop);
@@ -513,7 +565,9 @@ function advanceTransport(frame = performance.now()) {
   if (!transport) return;
   if (!petWindow || petWindow.isDestroyed() || !petWindow.isVisible() ||
       motion.phase !== "grounded" || dragging || menuOpen || (feeding && !transport.allowFeeding)) { stopTransport(); return; }
-  const t = Math.min(1, (frame - transport.started) / 60);
+  if(!Number.isFinite(frame))frame=performance.now();
+  if(![transport.from.x,transport.from.y,transport.to.x,transport.to.y,transport.started].every(Number.isFinite)){stopTransport();return;}
+  const t = Math.max(0,Math.min(1, (frame - transport.started) / 60));
   const x = Math.round(transport.from.x + (transport.to.x - transport.from.x) * t);
   const y = Math.round(transport.from.y + (transport.to.y - transport.from.y) * t);
   const before = petWindow.getBounds();
@@ -521,6 +575,7 @@ function advanceTransport(frame = performance.now()) {
   if (t === 1) stopTransport();
 }
 function movePetSmoothly(to, { allowFeeding = false } = {}) {
+  if(!petWindow||petWindow.isDestroyed()||!to||![to.x,to.y].every(Number.isFinite))return;
   advanceTransport();
   const bounds = petWindow.getBounds();
   if (bounds.x === to.x && bounds.y === to.y) return;
@@ -530,6 +585,7 @@ function movePetSmoothly(to, { allowFeeding = false } = {}) {
 function writeMotionPosition() {
   if (!petWindow || petWindow.isDestroyed()) return;
   const x = Math.round(motion.position.x), y = Math.round(motion.position.y);
+  if(![x,y].every(Number.isFinite)){resetDesktopMotion();return;}
   const previous = petWindow.getBounds();
   if (previous.x !== x || previous.y !== y) petWindow.setPosition(x, y);
 }
@@ -544,7 +600,7 @@ function startMotionFrames() {
     const snapshot = nativeWindowSnapshot(), before = motion;
     motion = desktopMotion.step(motion, dt, {
       area: petArea(motion.position), rect: bodyRect, scale: effectivePetScale(),
-      windows: snapshot.windows, windowsKnown: snapshot.known, now,
+      windows: [], windowsKnown: true, now,
     });
     writeMotionPosition();
     const phaseChanged = motion.phase !== before.phase;
@@ -561,11 +617,16 @@ function startMotionFrames() {
 function releasePet(point, { allowWindows = true } = {}) {
   if (!petWindow || petWindow.isDestroyed()) return;
   const bounds = petWindow.getBounds();
+  if(!preferences.parachuteEnabled){
+    stopMotionFrames();let p=petClamp(bounds,petArea(bounds));
+    if(preferences.edgeSnap){const area=petArea(bounds),g=desktopMotion.geometry(area,bodyRect,effectivePetScale());for(const [key,edge] of [['x',g.left],['x',g.right],['y',g.top],['y',g.floor]])if(Math.abs(p[key]-edge)<36)p[key]=Math.round(edge);}
+    petWindow.setPosition(p.x,p.y);motion=desktopMotion.newMotion(p,Date.now());setActivity('idle');return;
+  }
   motion.position = { x: bounds.x, y: bounds.y };
   const snapshot = nativeWindowSnapshot();
   motion = desktopMotion.release(motion, {
     area: petArea(bounds), rect: bodyRect, scale: effectivePetScale(), point,
-    windows: allowWindows && preferences.behavior.windowInteraction ? snapshot.windows : [], now: Date.now(),
+    windows: [], now: Date.now(),
   });
   setActivity(motion.phase, 650000);
   startMotionFrames();
@@ -583,6 +644,7 @@ function openDashboard(section) {
     "wardrobe",
     "settings",
     "life",
+    "house",
     "tools",
     "games",
     "studio",
@@ -630,6 +692,7 @@ function openDashboard(section) {
   });
 }
 function showPet() {
+  manualHidden=false;dndHidden=false;
   if (!petWindow || petWindow.isDestroyed()) return;
   petWindow.showInactive();
   petWindow.setIgnoreMouseEvents(false);
@@ -654,7 +717,7 @@ function resizePet() {
   motion = desktopMotion.newMotion(position, Date.now());
 }
 function createPet() {
-  const area = screen.getPrimaryDisplay().workArea;
+  const area = selectedDisplay().workArea;
   const size = petWindowSize(preferences.scale);
   const position = petClamp(
     {
@@ -705,6 +768,8 @@ function refreshTray() {
     Menu.buildFromTemplate([
       { label: nativeText("home"), click: openDashboard },
       { label: nativeText("show"), click: showPet },
+      { label: desktopCopy("Вернуть управление мышью","Повернути керування мишею","Restore mouse interaction"),click:()=>update({clickThrough:false}) },
+      { label: desktopCopy("Вернуть питомца на экран","Повернути улюбленця на екран","Reset pet position"),click:resetPetPosition },
       { type: "separator" },
       { label: nativeText("quit"), click: () => app.quit() },
     ]),
@@ -767,7 +832,7 @@ const feeder = createFeeder({
         };
         direction = carryMotion.to.x < bounds.x ? -1 : 1;
       }
-      setActivity(value.mode, 20000);
+      setActivity(value.mode, 20000, true);
     } else {
       carryMotion = null;
       setActivity(
@@ -999,6 +1064,22 @@ function registerIpc() {
     }
     return {leftPanel:false};
   });
+  handle("paw:guide", async (_,command)=>{
+    if(command==='replay'){preferences.guideStatus=null;preferences.guideStep=0;setActivity('wave');showPet();}
+    else if(command==='skip'){preferences.guideStatus='skipped';}
+    else if(command==='complete'){
+      preferences.guideStatus='completed';preferences.guideStep=4;preferences.guideReward=true;
+      preferences.outfit.accessory='starter-star';setActivity('excited',3500);showPet();
+    } else return {ok:false};
+    await save();broadcast();return state();
+  });
+  handle("paw:desktop",async (_,command)=>{
+    if(command==='reset')resetPetPosition();
+    else if(command==='dock'){await update({docked:!preferences.docked,roaming:false});}
+    else if(command==='uninstall')return openUninstall();
+    else if(command==='updates')return checkUpdates();
+    else return {ok:false};return {ok:true};
+  });
   handle("paw:get-state", () => state());
   handle("paw:update", (_, patch) => update(patch));
   handle("paw:show-pet", showPet);
@@ -1008,6 +1089,7 @@ function registerIpc() {
     return true;
   });
   handle("paw:hide", () => {
+    manualHidden=true;houseWindow?.hide();toyWindow?.hide();
     closeMenu();
     if (dragging) { dragging = null; releasePet(undefined, { allowWindows: false }); }
     stopMotionFrames(); stopTransport();
@@ -1020,7 +1102,7 @@ function registerIpc() {
     return true;
   });
   handle("paw:action", (_, value) => {
-    if (value === "stand") return state();
+    if (["stand","hide"].includes(value)) return state();
     restState = {};
     if (STATES.has(value)) {
       lifeAPI.interact(life, value);
@@ -1028,7 +1110,7 @@ function registerIpc() {
     }
     if (!feeding && STATES.has(value)) {
       closeMenu();
-      setActivity(value, value === "sleep" ? 120000 : 8500);
+      setActivity(value, value === "sleep" ? 120000 : value === "roll" ? 2000 : ["ear-scratch","nose-boop"].includes(value) ? 2600 : 8500);
     }
     return state();
   });
@@ -1048,7 +1130,7 @@ function registerIpc() {
       if (!fed.ok) return fed;
       meal = { food: value, started: Date.now(), ends: Date.now() + 6500 };
       mealFinish = meal.ends;
-      setActivity("eat", 6500);
+      setActivity("eat", 6500, true);
     } else if (command === "gift") {
       const result = lifeAPI.dailyGift(
         life,
@@ -1066,7 +1148,7 @@ function registerIpc() {
       life.inventory = V5.stock(life.inventory);
       const result = buildHome(life, preferences.skin, preferences.language);
       if (!result.ok) return result;
-      setActivity("build", 10000);
+      setActivity("build", 10000, true);
       syncHabitat();
     } else if (command === "birthday") {
       if (
@@ -1152,7 +1234,7 @@ function registerIpc() {
         game.type === "fish" &&
         (now < game.ready || now > game.ready + 1800)
       ) {
-        game.ready = now + 1500 + Math.random() * 2000;
+        game.ready = now + 750 + Math.random() * 1000;
         broadcast();
         return { ok: false };
       }
@@ -1160,7 +1242,7 @@ function registerIpc() {
       game.score++;
       game.target = Math.random();
       game.targetAt = now;
-      game.ready = now + 1500 + Math.random() * 2000;
+      game.ready = now + 750 + Math.random() * 1000;
       broadcast();
       return { ok: true };
     }
@@ -1266,6 +1348,12 @@ function registerIpc() {
   // Native cursor polling owns hit-testing so Finder/Explorer drags can enter
   // the pet even while Chromium is forwarding ordinary clicks through margins.
   ipcMain.on("paw:hit", () => {});
+  ipcMain.on("paw:habitat-drag",(event,phase,point)=>{
+    if(event.sender!==houseWindow?.webContents||!point||!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+    if(phase==='start')habitatDragging={point,bounds:houseWindow.getBounds()};
+    else if(phase==='move'&&habitatDragging){const b=habitatDragging.bounds,p=clampPosition({x:b.x+point.x-habitatDragging.point.x,y:b.y+point.y-habitatDragging.point.y},screen.getDisplayNearestPoint(point).workArea,b);houseWindow.setPosition(p.x,p.y);}
+    else if(['end','cancel'].includes(phase)&&habitatDragging){const b=houseWindow.getBounds();habitatDragging=null;void update({housePosition:{x:b.x,y:b.y}});}
+  });
   ipcMain.on("paw:drag", (event, phase, point) => {
     if (!trusted(event) || event.sender !== petWindow?.webContents || !point ||
         !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
@@ -1375,7 +1463,7 @@ function tick() {
     );
     menuWindow.setIgnoreMouseEvents(!hit, { forward: true });
   }
-  const shouldIgnore = !(insidePet || dragging || feeding);
+  const shouldIgnore = preferences.clickThrough || !(insidePet || dragging || feeding);
   if (shouldIgnore !== ignoringMouse) {
     ignoringMouse = shouldIgnore;
     petWindow.setIgnoreMouseEvents(shouldIgnore, { forward: true });
@@ -1394,6 +1482,15 @@ function tick() {
         startMotionFrames();
       }
     }
+  }
+  if(preferences.smartDnd && now-lastDndPoll>2000 && !dndPending){
+    lastDndPoll=now;dndPending=true;
+    tools.foreground().then(value=>{
+      foregroundValue=value;
+      const full=desktopPrefs.fullscreen(value,screen.getAllDisplays(),p=>process.platform==='win32'?screen.screenToDipPoint(p):p);
+      if(full&&!dndHidden&&petWindow?.isVisible()){dndHidden=true;closeMenu();petWindow.hide();houseWindow?.hide();toyWindow?.hide();}
+      else if(value.supported&&!full&&dndHidden){dndHidden=false;if(!manualHidden)showPet();}
+    }).finally(()=>{dndPending=false;});
   }
   lifeAPI.tickLife(life, { now, activity, idle });
   gameEngine.tick(life);
@@ -1424,7 +1521,7 @@ function tick() {
   }
   if (game && now >= game.ends) settleGame();
   if (game?.type === "fish" && now > game.ready + 1800)
-    game.ready = now + 1500 + Math.random() * 2000;
+    game.ready = now + 750 + Math.random() * 1000;
   if (game?.type === "butterflies" && now - game.targetAt > 3000) {
     game.target = Math.random();
     game.targetAt = now;
@@ -1458,11 +1555,11 @@ function tick() {
     }, { allowFeeding: true });
     return;
   }
-  if (dragging || feeding || menuOpen || motion.phase !== "grounded") return;
+  if (dragging || feeding || menuOpen || dndHidden || preferences.docked || motion.phase !== "grounded") return;
   const decision = lifeAPI.autonomousDecision(life, preferences.behavior, {
     now, idle, activity, activityUntil,
   });
-  if (decision) setActivity(
+  if (decision && activityPolicy.allowedActions(preferences).includes(decision.activity)) setActivity(
     decision.activity === "curl" && preferences.showHouse && life.house >= 10 ? "home" : decision.activity,
     decision.duration,
   );
@@ -1479,7 +1576,7 @@ function tick() {
     });
     if (
       !preferences.roaming &&
-      ["walk", "hunt", "skate", "scooter", "jetpack", "float"].includes(next)
+      ["walk", "hunt", "skate", "scooter", "jetpack", "float", "home"].includes(next)
     )
       next = "idle";
     if (
@@ -1505,7 +1602,9 @@ function tick() {
           croc: "yawn",
           dinosaur: "shake",
         }[preferences.skin] || "play";
-    setActivity(next, 10000 + Math.random() * 16000);
+    const available=activityPolicy.allowedActions(preferences);
+    if(!available.includes(next)) next=available[Math.floor(Math.random()*available.length)];
+    setActivity(next, 7000 + Math.random() * (8000 + preferences.behavior.lazy * 150));
   }
   if (preferences.roaming && petWindow.isVisible()) {
     const b = petWindow.getBounds(),
@@ -1616,8 +1715,12 @@ app.whenReady().then(async () => {
   openDashboard();
   createPet();
   createTray();
+  registerHotkey();
+  if(preferences.updateNotifications)setTimeout(()=>void checkUpdates(),12000).unref();
   syncHabitat();
   setInterval(tick, 60).unref();
+  screen.on("display-removed",()=>resetPetPosition());
+  screen.on("display-added",()=>broadcast());
   screen.on("display-metrics-changed", () => {
     if (!petWindow) return;
     const b = petWindow.getBounds(),
@@ -1630,9 +1733,9 @@ app.whenReady().then(async () => {
     setTimeout(async () => {
       try {
         const result = await dashboard.webContents.executeJavaScript(
-          `({ title: document.title, pets: document.querySelectorAll('.pet-card[data-skin]').length, bridge: !!window.paw, pet: !!document.querySelector('canvas.pet-3d, svg.pet-art') })`,
+          `({ title: document.title, pets: document.querySelectorAll('.pet-card[data-skin]').length, bridge: !!window.paw, pet: !!document.querySelector('canvas.pet-3d, svg.pet-art'), languagePicker: !!document.querySelector('[data-welcome-language]') })`,
         );
-        if (!result.bridge || !result.pet || result.pets !== 9)
+        if (!result.bridge || (!result.languagePicker && (!result.pet || result.pets !== 9)))
           throw new Error(JSON.stringify(result));
         console.log("PAW ELECTRON SMOKE PASS", JSON.stringify(result));
         app.exit(0);
@@ -1658,4 +1761,4 @@ app.on("before-quit", (event) => {
 app.on("window-all-closed", () => app.quit());
 app.on("activate", openDashboard);
 
-app.on("will-quit", () => { stopMotionFrames(); stopTransport(); tools.dispose(); });
+app.on("will-quit", () => { stopMotionFrames(); stopTransport(); globalShortcut.unregisterAll(); tools.dispose(); });

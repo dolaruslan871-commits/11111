@@ -1,3 +1,4 @@
+import {calendarPanel,bindCalendar,refreshCalendar} from './calendar-panel.js';
 import {homeName, homeStatus, homePlan, homeCostLabel} from "./home-model-browser.js";
 import { foodPanel } from "./v5-panels.js";
 import { v } from "./v5-ui.js";
@@ -190,10 +191,10 @@ export function word(text, lang) {
   return words[lang]?.[text] || t(text, lang);
 }
 export function ageLabel(life, lang = "ru") {
-  const days = life?.age || 0,
+  const days = life?.age || 1,
     weeks = Math.floor(days / 7);
   return lang === "en"
-    ? `${days} days${weeks ? ` · ${weeks} wk` : ""}`
+    ? `${days} ${days===1?"day":"days"}${weeks ? ` · ${weeks} wk` : ""}`
     : lang === "uk"
       ? `${days} дн.${weeks ? ` · ${weeks} тиж.` : ""}`
       : `${days} дн.${weeks ? ` · ${weeks} нед.` : ""}`;
@@ -206,8 +207,8 @@ export function featureContent(page, state, petStage, pets) {
     `<button type="button" ${attrs}>${w(text)}</button>`;
   const metric = (text, value) =>
     `<div class="life-meter" data-meter="${{ Настроение: "mood", Энергия: "energy", Голод: "hunger", Дружба: "friendship" }[text]}"><label>${w(text)}<b>${Math.round(value || 0)}%</b></label><meter min="0" max="100" value="${value || 0}"></meter></div>`;
-  if (page === "life")
-    return `<div class="feature-columns"><div>${petStage()}<div class="life-card age-card"><span>${w("Возраст")}</span><strong id="pet-age">${ageLabel(l, state.language)}</strong><span id="life-summary">${w(l.stage === "adult" ? "Взрослый" : l.stage === "young" ? "Подросток" : "Малыш")} · ${w("Уровень")} ${l.level || 1} · 🪙 ${l.coins || 0}</span></div></div><section class="life-card"><h2>${w("Мой питомец")}</h2>${metric("Настроение", l.mood)}${metric("Энергия", l.energy)}${metric("Голод", l.hunger)}${metric("Дружба", l.friendship)}<div class="food-row">${foodPanel(state)}</div><h3>${w("Ежедневный подарок")}</h3>${button("Получить подарок", 'id="daily-gift"')}<h3>${homeName(state.skin, state.language)} · <span id="house-progress">${Math.round(l.house || 0)}% · ${homeStatus(l).upgrades}/3</span></h3>${button(homeStatus(l).complete ? "Домик готов" : homePlan(l,state.skin)?.upgrade ? "Улучшить" : "Построить", `id="build-house" ${homeStatus(l).complete ? "disabled" : ""}`)}<p class="feature-hint" id="house-cost">${homeCostLabel(l,state.skin,state.language)}</p><p class="feature-hint">${state.language === "en" ? "10 building steps, then 3 comfort upgrades. Gather wood and stone in the games." : state.language === "uk" ? "10 етапів будівництва, потім 3 поліпшення затишку. Здобувай дерево й камінь в іграх." : "10 этапов постройки, затем 3 улучшения уюта. Добывай дерево и камень в играх."}</p><p class="feature-hint">${w("Прогресс хранится на этом компьютере. Возраст идёт по календарю, рост — в течение восьми недель.")}</p></section></div><section class="life-card behavior-editor"><h2>${w("Характер")}</h2><div class="behavior-grid">${[
+  if (page === "life" || page === "house") {
+    const markup = `<div class="feature-columns"><div>${petStage()}<div class="life-card age-card"><span>${w("Возраст")}</span><strong id="pet-age">${ageLabel(l, state.language)}</strong><span id="life-summary">${w(l.stage === "adult" ? "Взрослый" : l.stage === "young" ? "Подросток" : "Малыш")} · ${w("Уровень")} ${l.level || 1} · 🪙 ${l.coins || 0}</span></div></div><section class="life-card"><h2>${w("Мой питомец")}</h2>${metric("Настроение", l.mood)}${metric("Энергия", l.energy)}${metric("Голод", l.hunger)}${metric("Дружба", l.friendship)}<div class="food-row">${foodPanel(state)}</div><h3>${w("Ежедневный подарок")}</h3>${button("Получить подарок", 'id="daily-gift"')}<h3>${homeName(state.skin, state.language)} · <span id="house-progress">${Math.round(l.house || 0)}% · ${homeStatus(l).upgrades}/3</span></h3>${button(homeStatus(l).complete ? "Домик готов" : homePlan(l,state.skin)?.upgrade ? "Улучшить" : "Построить", `id="build-house" ${homeStatus(l).complete ? "disabled" : ""}`)}<label class="checkbox-row"><input type="checkbox" id="home-visible" ${state.showHouse !== false ? "checked" : ""}>${state.language === "en" ? "Show home · drag it to move" : state.language === "uk" ? "Показувати дім · перетягни мишею" : "Показывать дом · перетащи мышкой"}</label><p class="feature-hint" id="house-cost">${homeCostLabel(l,state.skin,state.language)}</p><p class="feature-hint">${state.language === "en" ? "10 building steps, then 3 comfort upgrades. Gather wood and stone in the games." : state.language === "uk" ? "10 етапів будівництва, потім 3 поліпшення затишку. Здобувай дерево й камінь в іграх." : "10 этапов постройки, затем 3 улучшения уюта. Добывай дерево и камень в играх."}</p><p class="feature-hint">${w("Прогресс хранится на этом компьютере. Возраст идёт по календарю, рост — в течение восьми недель.")}</p></section></div><section class="life-card behavior-editor"><h2>${w("Характер")}</h2><div class="behavior-grid">${[
       ["active", "Активность"],
       ["curious", "Любопытство"],
       ["lazy", "Лень"],
@@ -254,7 +255,13 @@ export function featureContent(page, state, petStage, pets) {
       )
       .join(
         "",
-      )}</select></label><label>${w("Второй питомец")}<select id="companion"><option value="">${w("Нет")}</option>${pets.map((p) => `<option value="${p.id}" ${state.companion === p.id ? "selected" : ""}>${esc(p.name || p.id)}</option>`).join("")}</select></label><label>${w("Дата рождения пользователя")}<input id="birthday" type="date" value="${l.birthday ? "2000-" + esc(l.birthday) : ""}"></label><label class="checkbox-row"><input id="autostart" type="checkbox" ${state.autostart ? "checked" : ""}>${w("Автозапуск Paw")}</label></div><p class="feature-hint">${w("Доступ к окнам на Mac может потребовать разрешение «Универсальный доступ».")}</p></section>`;
+      )}</select></label><label>${w("Второй питомец")}<select id="companion"><option value="">${w("Нет")}</option>${pets.map((p) => `<option value="${p.id}" ${state.companion === p.id ? "selected" : ""}>${esc(p.name || p.id)}</option>`).join("")}</select></label><label>${w("Дата рождения пользователя")}<input id="birthday" type="date" value="${l.birthday ? "2000-" + esc(l.birthday) : ""}"></label></div><p class="feature-hint">${w("Доступ к окнам на Mac может потребовать разрешение «Универсальный доступ».")}</p></section>`;
+    const homeStart=markup.indexOf('<h3>'+homeName(state.skin,state.language));
+    const homeEnd=markup.indexOf('<p class="feature-hint">'+w('Прогресс хранится'),homeStart);
+    const home=markup.slice(homeStart,homeEnd);
+    if(page==='house') return `<section class="life-card house-editor"><h2>${w('Домик')}</h2>${home}<div class="behavior-grid"><label>${state.language==='en'?'Home size':state.language==='uk'?'Розмір будиночка':'Размер домика'}<output id="house-scale-value">${Math.round((state.houseScale||1)*100)}%</output><input id="house-scale" type="range" min="0.55" max="1.8" step="0.05" value="${state.houseScale||1}"></label><label>${state.language==='en'?'Structure color':state.language==='uk'?'Колір будиночка':'Цвет домика'}<input id="house-color" type="color" value="${state.houseColor||'#bd885a'}"></label><label>${state.language==='en'?'Fabric and accents':state.language==='uk'?'Тканина та акценти':'Ткань и акценты'}<input id="house-accent" type="color" value="${state.houseAccent||'#c598ae'}"></label></div><button id="house-reset">${state.language==='en'?'Reset appearance':state.language==='uk'?'Скинути оформлення':'Сбросить оформление'}</button></section>`;
+    return markup.slice(0,homeStart)+markup.slice(homeEnd)+calendarPanel(state);
+  }
   if (page === "games")
     return `<div class="feature-columns"><div>${petStage()}<p>${w("Игра длится 30 секунд. Лови цель — получай монеты для гардероба.")}</p></div><section class="life-card"><h2>${w("Игры")} <span class="coin-balance">🪙 ${l.coins || 0}</span></h2><div class="game-picker">${[
       ["fish", "🎣", "Рыбалка"],
@@ -290,9 +297,10 @@ export function featureContent(page, state, petStage, pets) {
 }
 export function bindFeatures(
   root,
-  { api, state, change, accept, toast, pets },
+  { api, state, change, accept, toast, pets, previewBehavior },
 ) {
   const current = () => state();
+  bindCalendar(root,current);
   const w = (text) => word(text, current().language);
   const result = async (promise) => {
     try {
@@ -312,10 +320,19 @@ export function bindFeatures(
       toast(w("Не удалось выполнить действие."));
     }
   };
+  for(const [id,key] of [['house-scale','houseScale'],['house-color','houseColor'],['house-accent','houseAccent']]) {
+    const control=root.querySelector('#'+id);
+    control?.addEventListener('input',e=>{if(key==='houseScale')root.querySelector('#house-scale-value').textContent=Math.round(Number(e.target.value)*100)+'%';});
+    control?.addEventListener('change',e=>change({[key]:key==='houseScale'?Number(e.target.value):e.target.value}));
+  }
+  root.querySelector('#house-reset')?.addEventListener('click',()=>change({houseScale:1,houseColor:'#bd885a',houseAccent:'#c598ae'}));
+  root.querySelector("#home-visible")?.addEventListener("change", e => change({ showHouse: e.target.checked }));
   root.querySelectorAll("[data-behavior]").forEach((e) => {
     e.oninput = () => {
-      if (e.type === "range")
+      if (e.type === "range") {
         e.previousElementSibling.textContent = e.value + "%";
+        previewBehavior?.(e.dataset.behavior,Number(e.value));
+      }
     };
     e.onchange = () =>
       change({
@@ -441,7 +458,7 @@ export function bindFeatures(
       .then((m) => {
         const box = root.querySelector("#computer-metrics");
         if (!box) return;
-        box.innerHTML = `<p>CPU <b>${m.cpu ?? "—"}%</b></p><p>${w("Оперативная память")} <b>${m.memoryUsed ? Math.round((m.memoryUsed / 1024 ** 3) * 10) / 10 : "—"} / ${m.memoryTotal ? Math.round((m.memoryTotal / 1024 ** 3) * 10) / 10 : "—"} GB</b></p><p>${w("Температура")} <b>${m.temperature === null ? w("Датчик недоступен") : m.temperature + " °C"}</b></p><p>${w("Батарея")} <b>${m.battery?.supported ? m.battery.percent + "%" : w("Без батареи")}</b></p>`;
+        box.innerHTML = `<p>CPU <b>${m.cpu ?? "—"}%</b></p><p>${w("Оперативная память")} <b>${m.memoryUsed ? Math.round((m.memoryUsed / 1024 ** 3) * 10) / 10 : "—"} / ${m.memoryTotal ? Math.round((m.memoryTotal / 1024 ** 3) * 10) / 10 : "—"} GB</b></p><p>${w("Батарея")} <b>${m.battery?.supported ? m.battery.percent + "%" : w("Без батареи")}</b></p>`;
       })
       .catch(() => {});
 }
@@ -459,13 +476,14 @@ async function refreshMetrics(root, state, api) {
       box = root.querySelector("#computer-metrics"),
       w = (text) => word(text, state.language);
     if (box)
-      box.innerHTML = `<p>CPU <b>${m.cpu ?? "—"}%</b></p><p>${w("Оперативная память")} <b>${m.memoryUsed ? Math.round((m.memoryUsed / 1024 ** 3) * 10) / 10 : "—"} / ${m.memoryTotal ? Math.round((m.memoryTotal / 1024 ** 3) * 10) / 10 : "—"} GB</b></p><p>${w("Температура")} <b>${m.temperature === null ? w("Датчик недоступен") : m.temperature + " °C"}</b></p><p>${w("Батарея")} <b>${m.battery?.supported ? m.battery.percent + "%" : w("Без батареи")}</b></p>`;
+      box.innerHTML = `<p>CPU <b>${m.cpu ?? "—"}%</b></p><p>${w("Оперативная память")} <b>${m.memoryUsed ? Math.round((m.memoryUsed / 1024 ** 3) * 10) / 10 : "—"} / ${m.memoryTotal ? Math.round((m.memoryTotal / 1024 ** 3) * 10) / 10 : "—"} GB</b></p><p>${w("Батарея")} <b>${m.battery?.supported ? m.battery.percent + "%" : w("Без батареи")}</b></p>`;
   } catch {
   } finally {
     metricsPending = false;
   }
 }
 export function refreshFeatures(root, state, api) {
+  refreshCalendar(root);
   root.querySelectorAll("[data-stock]").forEach((e) => {
     const n = state.life?.inventory?.[e.dataset.stock] ?? 0;
     e.textContent = n;

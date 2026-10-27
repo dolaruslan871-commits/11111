@@ -44,9 +44,6 @@ function createDesktopTools({ platform = process.platform, execute, spawnProcess
       cpu: total ? Math.round((1 - idle / total) * 100) : 0,
       memoryUsed: os.totalmem() - os.freemem(),
       memoryTotal: os.totalmem(),
-      temperature: null,
-      temperatureReason:
-        "Датчик температуры недоступен через стандартный интерфейс ОС.",
     };
   }
   async function battery() {

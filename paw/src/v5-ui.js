@@ -183,7 +183,7 @@ export const petName = (state, skin, fallback) =>
     : state.names?.[skin] || v(fallback, state.language);
 export function welcome(state, pets, renderPet) {
   const w = (t) => escapeHTML(v(t, state.language));
-  return `<section class="welcome"><div class="welcome-logo">Paw <span>0.6.3</span></div><h1>${w("Добро пожаловать в Paw")}</h1><p class="welcome-subtitle">${w("Твой маленький друг на рабочем столе")}</p><div class="welcome-parade">${pets.map((p, i) => `<div style="--i:${i}">${renderPet(p.id, "idle", {})}<span>${escapeHTML(petName(state, p.id, p.name))}</span></div>`).join("")}</div><div class="welcome-guide">${[
+  return `<section class="welcome"><div class="welcome-logo">Paw <span>0.7.0</span></div><h1>${w("Добро пожаловать в Paw")}</h1><p class="welcome-subtitle">${w("Твой маленький друг на рабочем столе")}</p><div class="welcome-parade">${pets.map((p, i) => `<div style="--i:${i}">${renderPet(p.id, "idle", {})}<span>${escapeHTML(petName(state, p.id, p.name))}</span></div>`).join("")}</div><div class="welcome-guide">${[
     [
       "♡",
       "Знакомься и заботься",
@@ -218,7 +218,7 @@ export function creatorNote(language = "ru") {
   const copy = {
     ru: ["Создатель — Руслан Доля", "Пусть твой маленький друг всегда будет рядом и дарит немного тепла каждый день."],
     uk: ["Творець — Руслан Доля", "Нехай твій маленький друг завжди буде поруч і дарує трохи тепла щодня."],
-    en: ["Created by Руслан Доля", "May your little friend always be close by and bring a little warmth to every day."],
-  }[language] || ["Created by Руслан Доля", "May your little friend always be close by and bring a little warmth to every day."];
+    en: ["Created by Ruslan Dolia", "May your little friend always be close by and bring a little warmth to every day."],
+  }[language] || ["Created by Ruslan Dolia", "May your little friend always be close by and bring a little warmth to every day."];
   return `<section class="creator-note" aria-label="${escapeHTML(copy[0])}"><span class="creator-heart" aria-hidden="true">♡</span><div><h2>${escapeHTML(copy[0])}</h2><p>${escapeHTML(copy[1])}</p></div></section>`;
 }

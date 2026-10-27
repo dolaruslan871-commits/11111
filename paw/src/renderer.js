@@ -1,3 +1,4 @@
+import {ACTIONS,personalityActivity,resolveActivity} from './activity-policy.js';
 import { languagePicker, welcomeControls, bindWelcomeVoice } from "./onboarding.js";
 import { appearance, welcome, v, petName, creatorNote } from "./v5-ui.js";
 import {
@@ -32,6 +33,8 @@ import { t, localize, registerNames } from "./i18n.js";
 import { FOOD } from "./v5-model-browser.js";
 import { revealSection, confirmSelection } from "./ui-motion.js";
 
+import { createPawGuide } from "./paw-guide.js";
+import { desktopSettings, petAppearanceSettings, bindDesktopSettings } from "./desktop-settings.js";
 registerNames(pets);
 registerNames(Object.values(catalog.wardrobe).flat());
 let state = await api.getState(),
@@ -57,7 +60,10 @@ const outfitRequests = new Map();
 const pendingPurchases = new Set();
 const copy = (ru, uk, en) => state.language === "en" ? en : state.language === "uk" ? uk : ru;
 const app = document.querySelector("#app");
+let behaviorDraft=null;
+const petDisplayState=()=>behaviorDraft?{...state,behavior:{...state.behavior,...behaviorDraft},activity:resolveActivity(personalityActivity(Object.keys(behaviorDraft)[0],{...state.behavior,...behaviorDraft}),state),approachingHouse:false,approachingToy:false}:state;
 let interactions = createPetInteractions(action);
+const guide = createPawGuide({api, getState:()=>state, navigate:(target)=>{if(page!==target || !app.querySelector("main")){page=target; if(target==='wardrobe')wardrobeTab='accessory';render();}}, notify:toast});
 const names = {
   fox: "Лисёнок",
   husky: "Хася",
@@ -118,7 +124,7 @@ const preferenceKeys = [
   "player",
   "welcomeVersion",
   "languageConfirmed",
-  "graphicsQuality",
+  "graphicsQuality", "guideStatus", "guideStep", "guideReward", "petOpacity", "clickThrough", "parachuteEnabled", "energySaver", "smartDnd", "edgeSnap", "docked", "displayId", "hotkey", "updateNotifications", "breed", "allowedActivities", "houseScale", "houseColor", "houseAccent",
 ];
 const signature = (value) =>
   JSON.stringify(preferenceKeys.map((key) => value[key]));
@@ -154,7 +160,7 @@ function accept(next) {
   if (changed) render();
   else {
     if (page === "studio") studioController?.apply();
-    else petScene?.update({ ...state, studioQuality: false });
+    else petScene?.update({ ...petDisplayState(), studioQuality: false });
     refreshDynamicUI();
     document
       .querySelector("#pat-pet")
@@ -170,6 +176,7 @@ function accept(next) {
   }
 }
 async function change(patch, options = {}) {
+  if(patch.behavior)behaviorDraft=null;
   // Apply appearance immediately, before native settings persistence completes.
   if (patch.theme) document.documentElement.dataset.theme = patch.theme;
   try {
@@ -229,13 +236,14 @@ function petPicker() {
   return `<div class="section-heading"><h2>Кто будет рядом?</h2><span>Выбери своего друга</span></div><div class="pet-picker">${pets.map((p) => `<button type="button" class="pet-card ${state.skin === p.id ? "selected" : ""}" data-skin="${p.id}" aria-pressed="${state.skin === p.id}"><div class="pet-thumbnail">${renderPet(p.id, "idle", {})}</div><strong>${escape(petName(state, p.id, names[p.id] || p.name || p.id))}</strong><span class="selection-dot">${state.skin === p.id ? icon("check", 13) : ""}</span></button>`).join("")}</div>`;
 }
 function emotionPanel() {
-  const actions = studioActions.filter(
-    (id) => !["idle", "walk", "skate", "scooter", "jetpack"].includes(id),
-  );
-  return `<section class="emotion-panel"><div class="section-heading"><h2>${state.language === "en" ? "Expressions and actions" : state.language === "uk" ? "Емоції та рухи" : "Эмоции и движения"}</h2></div><div class="emotion-actions">${actions.map((id) => `<button data-action="${id}" aria-pressed="${state.activity === id}">${escape(actionLabel(id, state.language))}</button>`).join("")}</div></section>`;
+  const enabled=state.allowedActivities || ACTIONS;
+  return `<section class="emotion-panel life-card"><div class="section-heading"><h2>${copy('Разрешённые действия','Дозволені дії','Allowed actions')}</h2><button id="enable-all-actions">${copy('Включить все','Увімкнути всі','Enable all')}</button></div><p class="feature-hint">${copy('Оставь одно действие, чтобы питомец сохранял эту позу. Еда и перетаскивание временно прерывают её.','Залиш одну дію, щоб улюбленець зберігав цю позу. Їжа та перетягування тимчасово переривають її.','Keep one action enabled to hold that pose. Feeding and dragging interrupt it temporarily.')}</p><div class="emotion-actions">${ACTIONS.map(id=>`<div class="action-choice"><label><input type="checkbox" data-allowed-action="${id}" ${enabled.includes(id)?'checked':''}>${escape(actionLabel(id,state.language))}</label><button type="button" data-action="${id}" ${enabled.includes(id)?'':'disabled'} aria-label="${escape(actionLabel(id,state.language))}">▶</button><button type="button" data-only-action="${id}">${copy('Только','Лише','Only')}</button></div>`).join('')}</div></section>`;
+}
+function petControls() {
+ return `<section class="life-card"><h2>${copy('Питомец на экране','Улюбленець на екрані','Desktop pet')}</h2>${toggleRow('setting-sound',t('Звуки питомца',state.language),'',!state.muted,'volume')}${toggleRow('setting-roam',t('Прогулки по экрану',state.language),copy('Выключи, чтобы закрепить питомца без анимации ходьбы.','Вимкни, щоб закріпити улюбленця без анімації ходьби.','Turn off to keep your pet still, without a walking animation.'),state.roaming,'paw')}<label class="size-slider">${t('Размер питомца',state.language)}<input id="pet-size" type="range" min="0.6" max="1.6" step="0.1" value="${state.scale||1}"><output id="size-value">${Math.round((state.scale||1)*100)}%</output></label>${petAppearanceSettings(state)}<div class="feed-mode"><strong>${copy('Файлы и папки','Файли й папки','Files and folders')}</strong><p>${copy('Перемещаются в системную корзину. Их можно восстановить.','Переміщуються до системного кошика. Їх можна відновити.','Moved to the system trash, where they can be restored.')}</p><div class="segmented"><button data-feed-mode="eat" aria-pressed="${state.feedMode!=='carry'}">${copy('Съесть','З’їсти','Eat')}</button><button data-feed-mode="carry" aria-pressed="${state.feedMode==='carry'}">${copy('Отнести в корзину','Віднести до кошика','Carry to trash')}</button></div></div></section>`;
 }
 function homeContent() {
-  return `<div class="main-grid"><div>${petStage()}<div class="quick-actions"><button data-action="pet">♡ ${t("Погладить", state.language)}</button><button data-action="play">⚽ ${t("Поиграть", state.language)}</button><button id="open-studio">◉ ${v("Съёмка", state.language)}</button></div></div><aside class="life-card"><h2>${escape(petName(state, state.skin, names[state.skin]))}</h2><p>${ageLabel(state.life, state.language)}</p><h3>${v("Покормить", state.language)}</h3>${foodPanel(state)}<p class="feature-hint" data-food-hint>${escape(foodHint())}</p></aside></div>${identityPanel(state, names[state.skin])}${emotionPanel()}${petPicker()}<p class="bottom-note">${v("Ненужные файлы можно перетаскивать на питомца: он отправит их в системную корзину.", state.language)}</p>${creatorNote(state.language)}`;
+  return `<div class="main-grid"><div>${petStage()}<div class="quick-actions"><button data-action="pet">♡ ${t("Погладить", state.language)}</button><button data-action="play">⚽ ${t("Поиграть", state.language)}</button><button id="open-studio">◉ ${v("Съёмка", state.language)}</button></div></div><aside class="life-card"><h2>${escape(petName(state, state.skin, names[state.skin]))}</h2><p>${ageLabel(state.life, state.language)}</p><h3>${v("Покормить", state.language)}</h3>${foodPanel(state)}<p class="feature-hint" data-food-hint>${escape(foodHint())}</p></aside></div>${identityPanel(state, names[state.skin])}${petPicker()}${petControls()}${emotionPanel()}<p class="bottom-note">${v("Ненужные файлы можно перетаскивать на питомца: он отправит их в системную корзину.", state.language)}</p>${creatorNote(state.language)}`;
 }
 function wardrobeContent() {
   return `<div class="wardrobe-layout"><div>${petStage()}<p class="wardrobe-caption">${copy("Собери образ, который подходит именно твоему другу.", "Створи образ, що пасує саме твоєму другові.", "A little style, a lot of personality. Make the look their own.")}</p></div><section class="wardrobe-panel"><div class="wardrobe-panel-heading"><h2>${copy("Коллекция", "Колекція", "The collection")}</h2><span class="wardrobe-save-state" role="status" aria-live="polite" data-state="${saveState}">${wardrobeStatus()}</span></div><div class="wardrobe-tabs" role="tablist" aria-label="Виды аксессуаров">${Object.entries(
@@ -247,16 +255,13 @@ function wardrobeContent() {
     )
     .join(
       "",
-    )}</div><div class="outfit-options" id="wardrobe-options" role="tabpanel" aria-labelledby="wardrobe-tab-${wardrobeTab}">${wardrobe[wardrobeTab].items.map((item) => `<button type="button" class="outfit-option ${state.outfit[wardrobeTab] === item.id ? "selected" : ""}" data-outfit="${item.id}" aria-pressed="${state.outfit[wardrobeTab] === item.id}"><span class="outfit-preview" aria-hidden="true">${renderWardrobeItem(wardrobeTab, item.id)}</span><span>${escape(item.name)}${item.price && !state.life?.gifts?.includes(wardrobeTab + ":" + item.id) ? " · 🪙 " + item.price : ""}</span>${state.outfit[wardrobeTab] === item.id ? `<i>${icon("check", 14)}</i>` : ""}</button>`).join("")}</div><button type="button" class="text-button" id="reset-outfit">Снять все аксессуары</button><div class="wardrobe-note">${icon("ball")}${toyDistance(state)}</div><button type="button" class="wardrobe-play" data-action="play">${icon("ball")} Поиграть</button></section></div>${petPicker()}`;
+    )}</div><div class="outfit-options" id="wardrobe-options" role="tabpanel" aria-labelledby="wardrobe-tab-${wardrobeTab}">${wardrobe[wardrobeTab].items.filter(item=>!item.guideOnly || state.guideReward).map((item) => `<button type="button" class="outfit-option ${state.outfit[wardrobeTab] === item.id ? "selected" : ""}" data-outfit="${item.id}" aria-pressed="${state.outfit[wardrobeTab] === item.id}"><span class="outfit-preview" aria-hidden="true">${renderWardrobeItem(wardrobeTab, item.id)}</span><span>${escape(item.name)}${item.price && !state.life?.gifts?.includes(wardrobeTab + ":" + item.id) ? " · 🪙 " + item.price : ""}</span>${state.outfit[wardrobeTab] === item.id ? `<i>${icon("check", 14)}</i>` : ""}</button>`).join("")}</div><button type="button" class="text-button" id="reset-outfit">Снять все аксессуары</button><div class="wardrobe-note">${icon("ball")}${toyDistance(state)}</div><button type="button" class="wardrobe-play" data-action="play">${icon("ball")} Поиграть</button></section></div>${petPicker()}`;
 }
 function toggleRow(id, title, description, checked, symbol) {
   return `<div class="setting-row"><span class="setting-icon">${icon(symbol)}</span><div><strong>${title}</strong><p>${description}</p></div><button type="button" id="${id}" role="switch" aria-checked="${checked}" aria-label="${title}" class="switch ${checked ? "on" : ""}"><i></i></button></div>`;
 }
 function settingsContent() {
-  return (
-    appearancePanel(state) + graphicsPanel() +
-    `<div class="settings-layout"><section class="settings-card"><h2>Настройки питомца</h2>${toggleRow("setting-sound", "Звуки питомца", "Голоса животных во время общения", !state.muted, "volume")}${toggleRow("setting-top", "Поверх окон", "Питомец остаётся видимым поверх других приложений", state.alwaysOnTop !== false, "arrow")}${toggleRow("setting-roam", "Прогулки по экрану", "Питомец сам гуляет, играет и отдыхает", state.roaming, "paw")}<div class="appearance-settings"><label><strong>Язык</strong><select id="language" aria-label="Язык"><option value="ru" ${state.language === "ru" ? "selected" : ""}>Русский</option><option value="uk" ${state.language === "uk" ? "selected" : ""}>Українська</option><option value="en" ${state.language === "en" ? "selected" : ""}>English</option></select></label><div><strong>Тема</strong><div class="segmented"><button type="button" data-theme="light" aria-pressed="${state.theme !== "dark"}">Светлая</button><button type="button" data-theme="dark" aria-pressed="${state.theme === "dark"}">Тёмная</button></div></div></div><div class="setting-row size-setting"><span class="setting-icon">${icon("paw")}</span><div><strong>Размер питомца</strong><label class="size-slider"><input id="pet-size" aria-label="Размер питомца" type="range" min="0.6" max="1.6" step="0.1" value="${state.scale || 1}"><output id="size-value">${Math.round((state.scale || 1) * 100)}%</output></label></div></div><div class="feed-mode"><strong>Файлы и папки</strong><p>Файлы и папки перемещаются в системную корзину. Их можно восстановить.</p><div class="segmented"><button type="button" data-feed-mode="eat" aria-pressed="${state.feedMode !== "carry"}">Съесть</button><button type="button" data-feed-mode="carry" aria-pressed="${state.feedMode === "carry"}">Отнести в корзину</button></div></div><h2 class="system-title">Устройство</h2><div class="system-buttons"><button type="button" id="device-audio">${icon("volume")}<span class="system-control-name">Звук устройства</span><span id="device-audio-label">Проверка…</span></button><button type="button" id="bluetooth-settings">${icon("bluetooth")} Bluetooth <span id="bluetooth-label">Проверка…</span></button></div><p class="system-footnote">Если прямое переключение недоступно, откроются системные настройки.</p><div class="weather-settings"><h2>Погода</h2><form id="weather-form"><label for="weather-city">Город</label><div class="inline-controls"><input id="weather-city" maxlength="100" autocomplete="off" value="${escape(state.weatherCity || "")}" placeholder="Город"><button type="submit">Сохранить</button></div></form><p id="weather-status" role="status"></p><p class="weather-attribution">Open-Meteo · GeoNames · CC BY 4.0</p></div><div class="shortcut-settings"><h2>Приложение по клику</h2><p id="shortcut-name">${state.shortcut?.name ? escape(state.shortcut.name) : "Приложение не выбрано"}</p><div class="inline-controls"><button type="button" id="choose-app">Выбрать приложение</button>${state.shortcut ? '<button type="button" id="open-app">Открыть</button><button type="button" id="clear-app">Убрать</button>' : ""}</div></div></section><aside class="help-card"><div class="help-pet">${renderPet(state.skin, "sleep", state.outfit)}</div><h2>Paw</h2><p>${word("Быстрые действия", state.language)} · Paw 0.6.3</p><div class="help-divider"></div><p class="version">${state.language === "en" ? "Version" : state.language === "uk" ? "Версія" : "Версия"} 0.6.3 · 3D</p></aside></div>`
-  );
+ return `<nav class="settings-jump" aria-label="${copy('Разделы настроек','Розділи налаштувань','Settings sections')}"><a href="#app-appearance">${copy('Оформление окон','Оформлення вікон','Window appearance')}</a><a href="#app-graphics">${copy('Графика','Графіка','Graphics')}</a><a href="#app-desktop">${copy('Приложение и система','Програма й система','App and system')}</a></nav><section class="life-card"><label>${t('Язык',state.language)}<select id="language"><option value="ru" ${state.language==='ru'?'selected':''}>Русский</option><option value="uk" ${state.language==='uk'?'selected':''}>Українська</option><option value="en" ${state.language==='en'?'selected':''}>English</option></select></label>${toggleRow('setting-top',t('Поверх окон',state.language),'',state.alwaysOnTop!==false,'arrow')}</section><div id="app-appearance">${appearancePanel(state)}</div><div id="app-graphics">${graphicsPanel()}</div><div id="app-desktop">${desktopSettings(state)}<section class="life-card"><h2>${copy('Подключения и погода','Підключення й погода','Connections and weather')}</h2><div class="system-buttons"><button id="device-audio">${icon('volume')}<span class="system-control-name">${copy('Звук устройства','Звук пристрою','Device audio')}</span><span id="device-audio-label">…</span></button><button id="bluetooth-settings">${icon('bluetooth')} Bluetooth <span id="bluetooth-label">…</span></button></div><div class="weather-settings"><form id="weather-form"><label for="weather-city">${copy('Город для прогноза','Місто для прогнозу','Weather city')}</label><div class="inline-controls"><input id="weather-city" maxlength="100" value="${escape(state.weatherCity||'')}"><button>${copy('Сохранить','Зберегти','Save')}</button></div></form><p id="weather-status" role="status"></p><p class="weather-attribution">Open-Meteo · GeoNames · CC BY 4.0</p></div></section></div><p class="version">Paw 0.7.1</p>`;
 }
 function render(reason = "preference") {
   const generation = ++renderGeneration;
@@ -286,12 +291,7 @@ function render(reason = "preference") {
       });
       return;
     }
-    app.innerHTML = welcome(state, pets, renderPet);
-    app.querySelector(".welcome-logo").insertAdjacentHTML("afterend", welcomeControls(state.language));
-    app.querySelector("#welcome-language").onclick = () => change({languageConfirmed: false});
-    welcomeVoiceCleanup = bindWelcomeVoice(app, state.language);
-    app.querySelector("#welcome-continue").onclick = () =>
-      change({ welcomeVersion: "0.5" });
+    void change({ welcomeVersion: "0.5" });
     return;
   }
 
@@ -306,6 +306,7 @@ function render(reason = "preference") {
     wardrobe: "Гардероб",
     settings: "Настройки",
     life: word("Характер", state.language),
+    house: copy("Домик", "Будиночок", "Home & habitat"),
     tools: word("Быстрые действия", state.language),
     games: word("Игры", state.language),
     studio: v("Съёмка", state.language),
@@ -314,6 +315,7 @@ function render(reason = "preference") {
     ["home", "home", "Мой питомец"],
     ["wardrobe", "shirt", "Гардероб"],
     ["life", "heart", word("Характер", state.language)],
+    ["house", "home", copy("Домик", "Будиночок", "Home & habitat")],
     ["games", "ball", word("Игры", state.language)],
     ["tools", "sliders", word("Быстрые действия", state.language)],
     ["studio", "app", v("Съёмка", state.language)],
@@ -321,11 +323,12 @@ function render(reason = "preference") {
   ]
     .map(
       ([id, symbol, name]) =>
-        `<button type="button" class="nav-item ${page === id ? "active" : ""}" data-page="${id}" ${page === id ? 'aria-current="page"' : ""}>${icon(symbol)}<span>${name}</span></button>`,
+        `
+${id==='home'?`<p class="nav-group-label">${copy("ПИТОМЕЦ","УЛЮБЛЕНЕЦЬ","YOUR PET")}</p>`:id==='games'?`<p class="nav-group-label">${copy("ЗАНЯТИЯ","ЗАНЯТТЯ","ACTIVITIES")}</p>`:id==='settings'?`<p class="nav-group-label">${copy("ПРИЛОЖЕНИЕ","ПРОГРАМА","APPLICATION")}</p>`:''}<button type="button" class="nav-item ${page === id ? "active" : ""}" data-page="${id}" ${page === id ? 'aria-current="page"' : ""}>${icon(symbol)}<span>${name}</span></button>`,
     )
     .join(
       "",
-    )}</nav><div class="sidebar-bottom"><div class="tiny-paw">${icon("paw", 32)}</div><span class="sidebar-version">Paw · v0.6.3</span></div></aside><main><header class="page-header"><div class="header-copy"><p class="page-kicker">${copy("ТВОЙ МАЛЕНЬКИЙ МИР", "ТВІЙ МАЛЕНЬКИЙ СВІТ", "YOUR LITTLE WORLD")}</p><h1>${titles[page]}</h1></div><div class="header-actions"><button id="ui-mode" class="mode-toggle">${v(state.uiMode === "detailed" ? "Простое меню" : "Подробное меню", state.language)}</button><button type="button" id="show-pet" class="primary-button">${icon("paw", 18)} На рабочий стол ${icon("arrow", 16)}</button></div></header><div class="premium-content" data-section="${page}">${page === "home" ? homeContent() : page === "wardrobe" ? wardrobeContent() : page === "settings" ? settingsContent() : page === "games" ? adventureContent(state) : page === "studio" ? studioContent(state, petStage) : featureContent(page, state, petStage, pets)}</div><footer><span>Paw · 0.6.3</span><span>${copy("Маленький друг. Каждый день.", "Маленький друг. Щодня.", "A little friend. Every day.")}</span></footer></main></div>`;
+    )}</nav><div class="sidebar-bottom"><div class="tiny-paw">${icon("paw", 32)}</div><span class="sidebar-version">Paw · v0.7.1</span></div></aside><main><header class="page-header"><div class="header-copy"><p class="page-kicker">${copy("ТВОЙ МАЛЕНЬКИЙ МИР", "ТВІЙ МАЛЕНЬКИЙ СВІТ", "YOUR LITTLE WORLD")}</p><h1>${titles[page]}</h1></div><div class="header-actions"><button id="ui-mode" class="mode-toggle">${v(state.uiMode === "detailed" ? "Простое меню" : "Подробное меню", state.language)}</button><button type="button" id="show-pet" class="primary-button">${icon("paw", 18)} На рабочий стол ${icon("arrow", 16)}</button></div></header><div class="premium-content" data-section="${page}">${page === "home" ? homeContent() : page === "wardrobe" ? wardrobeContent() : page === "settings" ? settingsContent() : page === "games" ? adventureContent(state) : page === "studio" ? studioContent(state, petStage) : featureContent(page, state, petStage, pets)}</div><footer><span>Paw · 0.7.1</span><span>${copy("Маленький друг. Каждый день.", "Маленький друг. Щодня.", "A little friend. Every day.")}</span></footer></main></div>`;
   const host = document.querySelector("#pat-pet");
   if (host && retainedPet) {
     host.replaceWith(retainedPet);
@@ -337,10 +340,17 @@ function render(reason = "preference") {
     petScene.setRotation?.((rotation * Math.PI) / 180);
   } else {
     if (page === "studio") studioController?.apply();
-    else petScene?.update({ ...state, studioQuality: false });
+    else petScene?.update({ ...petDisplayState(), studioQuality: false });
   }
   bind();
-  bindFeatures(app, { api, state: () => state, change, accept, toast, pets });
+  bindFeatures(app, { api, state: () => state, change, accept, toast, pets,
+    previewBehavior(key,value) {
+      behaviorDraft={[key]:value};
+      const behavior={...state.behavior,[key]:value};
+      const activity=resolveActivity(personalityActivity(key,behavior),state);
+      petScene?.update({...state,behavior,activity,approachingHouse:false,approachingToy:false});
+    }
+  });
   bindV5Panels(app, { state: () => state, change });
   if (page === "studio")
     studioController = bindStudio(app, {
@@ -359,7 +369,9 @@ function render(reason = "preference") {
     page = "studio";
     render();
   });
+  bindDesktopSettings(app,{api,change,replay:()=>guide.replay(),notify:toast});
   localize(app, state.language);
+  queueMicrotask(()=>guide.sync());
   const main = app.querySelector("main");
   if (main) main.scrollTop = samePage ? oldMainScroll : 0;
   if (samePage && focusedId && reason !== "category") document.getElementById(focusedId)?.focus({ preventScroll: true });
@@ -426,6 +438,13 @@ function bindPet() {
   };
 }
 function bind() {
+  app.querySelector('#enable-all-actions')?.addEventListener('click',()=>change({allowedActivities:[...ACTIONS]}));
+  app.querySelectorAll('[data-only-action]').forEach(e=>e.onclick=()=>change({allowedActivities:[e.dataset.onlyAction]}));
+  app.querySelectorAll('[data-allowed-action]').forEach(e=>e.onchange=()=>{
+    const selected=[...app.querySelectorAll('[data-allowed-action]:checked')].map(e=>e.dataset.allowedAction);
+    if(!selected.length){e.checked=true;return;}
+    change({allowedActivities:selected});
+  });
   document.querySelector(".brand").onclick = (event) => {
     event.preventDefault();
     page = "home";
@@ -699,7 +718,7 @@ api.onState((next) => {
   accept(next);
   if (next.notice?.at !== noticeAt && next.notice) {
     noticeAt = next.notice.at;
-    if (next.notice.kind === "task") toast(next.notice.text);
+    if (["task","update"].includes(next.notice.kind)) toast(next.notice.text);
     else if (next.notice.kind === "timer")
       toast(word("Таймер", state.language) + " ⏰");
   }
@@ -712,6 +731,7 @@ api.onNavigate?.((section) => {
       "wardrobe",
       "settings",
       "life",
+    "house",
       "games",
       "tools",
       "studio",

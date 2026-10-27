@@ -1,7 +1,9 @@
 import * as T from "./vendor/three.module.js";
-export function makeMeal(root) {
+export function makeMeal(root, skin = "dog") {
   const group = new T.Group();
-  group.position.set(0.05, 0.04, 1.25);
+  const distance={cat:1.65,owl:1.35,croc:2.02,dinosaur:1.65,rabbit:1.65,kangaroo:1.4}[skin]||1.85;
+  group.position.set(0, 0.025, distance);
+  group.name='meal-on-floor';
   root.add(group);
   const material = (color) =>
     new T.MeshStandardMaterial({ color, roughness: 0.7 });
@@ -98,7 +100,39 @@ export function makeMeal(root) {
       }
   }
   group.visible = false;
+  const world=new T.Vector3(),vertex=new T.Vector3(),bowlWorld=new T.Vector3(),headWorld=new T.Vector3();
+  let clearance=null;
+  function keepMuzzleAboveRim(pet) {
+    pet.root.updateMatrixWorld(true);group.getWorldPosition(bowlWorld);
+    const scale=pet.root.getWorldScale(new T.Vector3()).y,radius=.31*scale,top=bowlWorld.y+.14*scale;
+    let low=Infinity;
+    pet.head.traverse(mesh=>{
+      if(!mesh.isMesh||!mesh.visible||mesh.name==='groomed-fur')return;
+      for(let o=mesh;o&&o!==pet.head;o=o.parent)if(!o.visible||o.name?.startsWith('outfit-'))return;
+      const positions=mesh.geometry?.attributes.position;if(!positions)return;
+      for(let i=0;i<positions.count;i+=2) {
+        vertex.fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);
+        if((vertex.x-bowlWorld.x)**2+(vertex.z-bowlWorld.z)**2<radius*radius)low=Math.min(low,vertex.y);
+      }
+    });
+    if(Number.isFinite(low)) {
+      const lift=Math.max(0,top+.018-low);
+      if(lift>0){pet.head.getWorldPosition(headWorld);headWorld.y+=lift;pet.torso.worldToLocal(headWorld);pet.head.position.copy(headWorld);pet.head.updateMatrixWorld(true);}
+      clearance=low+lift-top;
+    } else clearance=null;
+  }
   return {
+    group,
+    inspect:()=>({visible:group.visible,distance,bowlTop:.165,worldY:group.getWorldPosition(world).y,clearance}),
+    placeOnFloor(pet) {
+      if(!group.visible)return;
+      // The body is grounded independently. The bowl never inherits its bob,
+      // corrective lift or the head's feeding transform.
+      pet.root.updateMatrixWorld(true);
+      world.set(0,0,distance);pet.root.localToWorld(world);world.y=.025;
+      pet.root.worldToLocal(world);group.position.copy(world);
+      keepMuzzleAboveRim(pet);
+    },
     update(state) {
       const meal = state.meal;
       group.visible = state.activity === "eat" && !!meal && !state.habitatKind;

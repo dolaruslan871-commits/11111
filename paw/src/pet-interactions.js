@@ -1,53 +1,21 @@
-// Keep double-click petting distinct from repeated taps on a paw.
 export function createPetInteractions(action, now = () => performance.now()) {
-  let pawTaps = [],
-    earTaps = [],
-    spins = [];
-  function tap(part) {
-    const time = now();
-    if (part === "ear") {
-      earTaps = earTaps.filter((t) => time - t < 2500);
-      earTaps.push(time);
-      if (earTaps.length >= 5) {
-        earTaps = [];
-        action("detective");
-        return "detective";
-      }
-      return null;
-    }
-    earTaps = [];
-    pawTaps = pawTaps.filter((previous) => time - previous < 1400);
-    if (part === "tail") {
-      pawTaps = [];
-      action("chase-tail");
-      return "chase-tail";
-    }
-    if (part !== "paw") {
-      pawTaps = [];
-      return null;
-    }
-    pawTaps.push(time);
-    if (pawTaps.length >= 3) {
-      action("angry");
-      return "angry";
-    }
-    return null;
+ let bellyTaps=[],pawTaps=[],spins=[];
+ function tap(part){
+  const time=now();
+  if(part==='body'||part==='belly'){
+   bellyTaps=bellyTaps.filter(t=>time-t<1600);bellyTaps.push(time);
+   if(bellyTaps.length===3){bellyTaps=[];action('roll');return 'roll';}
+   return null;
   }
-  function doubleTap(part) {
-    if (part === "tail" || (part === "paw" && pawTaps.length >= 3)) return null;
-    action("pet");
-    return "pet";
-  }
-  function spin(delta) {
-    const time = now();
-    spins = spins.filter((x) => time - x.t < 1800);
-    spins.push({ t: time, d: Math.abs(delta) });
-    if (spins.reduce((n, x) => n + x.d, 0) > 500) {
-      spins = [];
-      action("dance");
-      return "dance";
-    }
-    return null;
-  }
-  return { tap, doubleTap, spin };
+  bellyTaps=[];
+  const direct={ear:'ear-scratch',nose:'nose-boop',head:'pet',tail:'chase-tail'}[part];
+  if(direct){pawTaps=[];action(direct);return direct;}
+  if(part!=='paw'){pawTaps=[];return null;}
+  pawTaps=pawTaps.filter(t=>time-t<1400);pawTaps.push(time);
+  if(pawTaps.length===3){pawTaps=[];action('angry');return 'angry';}
+  return null;
+ }
+ function doubleTap(part){if(['ear','nose','head','tail','body','belly'].includes(part))return null;action('pet');return 'pet';}
+ function spin(delta){const t=now();spins=spins.filter(x=>t-x.t<1800);spins.push({t,d:Math.abs(delta)});if(spins.reduce((n,x)=>n+x.d,0)>500){spins=[];action('dance');return 'dance';}return null;}
+ return {tap,doubleTap,spin};
 }

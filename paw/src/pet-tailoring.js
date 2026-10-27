@@ -40,6 +40,10 @@ export function dressGarment({group, color, accent, mats, id, bodyScale, legs, u
     ring(leg.pivot,accent,[0,-.278,0],.117,.023,[Math.PI/2,0,0]);
     ring(leg.pivot,accent,[0,-.25,0],.131,.005,[Math.PI/2,0,0]);
   }
+  for(const side of [-1,1])for(let i=0;i<9;i++){
+    const z=-.03+scale[2]*(-.6+i*.14),x=side*scale[0]*.88;
+    tube(group,accent,[[x,.8+scale[1]*.45,z],[x,.8+scale[1]*.45,z+.018]],.0025);
+  }
   const front=scale[2]-.03;
   if(["hoodie","sweater","christmas","pajamas","shirt","sailor","halloween"].includes(id)) {
     const pocket=sphere(group,color,[0,.75,front+.002],[scale[0]*.5,.106,.026],28);

@@ -1,3 +1,4 @@
+import {resolveActivity,personalityActivity} from './activity-policy.js';
 import { buildHome } from "./home-model-browser.js";
 import * as V5 from "./v5-model-browser.js";
 import { createGameEngine } from "./game-engine-browser.js";
@@ -8,7 +9,7 @@ const initial = {
   autostart: false,
   life: null,
   season: lifeAPI.season(new Date()),
-  version: "0.6.3",
+  version: "0.7.1",
   graphicsQuality: "high",
   skin: "dog",
   muted: false,
@@ -101,7 +102,7 @@ export const api = window.paw || {
     if (command === "food") {
       const r = V5.feedInventory(previewLife, value.skin, arg);
       if (!r.ok) return r;
-      value.activity = "eat";
+      value.activity = "eat"; value.meal={food:arg,started:Date.now(),ends:Date.now()+6500};
     } else if (command === "gift") result = lifeAPI.dailyGift(previewLife, []);
     else if (command === "build") {
       previewLife.inventory = V5.stock(previewLife.inventory);
@@ -151,7 +152,6 @@ export const api = window.paw || {
     cpu: null,
     memoryUsed: null,
     memoryTotal: null,
-    temperature: null,
     battery: { supported: false },
   }),
   media: async () => ({ ok: false, message: "Доступно в настольном Paw." }),
@@ -169,6 +169,12 @@ export const api = window.paw || {
     ok: false,
     message: "Скриншоты доступны в настольном Paw.",
   }),
+  guide: async(command)=>{
+    if(command==='replay')return api.update({guideStatus:null,guideStep:0});
+    if(command==='skip')return api.update({guideStatus:'skipped'});
+    if(command==='complete')return api.update({guideStatus:'completed',guideStep:4,guideReward:true,outfit:{accessory:'starter-star'},activity:'excited'});
+  },
+  desktop: async(command)=>{if(command==='dock')return api.update({docked:!value.docked});return {ok:false,message:value.language==='en'?'Available in the desktop app.':value.language==='uk'?'Доступно в настільній програмі.':'Доступно в настольном приложении.'};},
   getState: async () => value,
   update: async (patch) => {
     value = {
@@ -180,12 +186,15 @@ export const api = window.paw || {
     value.graphicsQuality = ["low", "medium", "high", "ultra"].includes(value.graphicsQuality)
       ? value.graphicsQuality
       : "high";
+    value={...value,...V5.extraSettings(value)};
+    const key=Object.keys(patch.behavior||{}).find(k=>['active','lazy','curious','walkFrequency','attentionFrequency'].includes(k));
+    value.activity=resolveActivity(key?personalityActivity(key,value.behavior):value.activity,value);
     localStorage.setItem("paw-preview", JSON.stringify(value));
     emit();
     return value;
   },
   action: async (activity) => {
-    value = { ...value, activity };
+    value = { ...value, activity: resolveActivity(activity,value) };
     emit();
     return value;
   },

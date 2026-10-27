@@ -1,4 +1,5 @@
-// Generated from life.cjs. Keep simulation exports in parity.
+import {petAge} from './pet-calendar.js';
+import {personality} from './activity-policy.js';
 // Deterministic pet life simulation. All dates are local; progress is saved by main.
 const DAY = 86400000;
 const ACTIVITIES = [
@@ -33,7 +34,6 @@ const ACTIVITIES = [
   "fish",
   "butterflies",
   "ball",
-  "hide",
   "skate",
   "scooter",
   "jetpack",
@@ -256,7 +256,7 @@ function autonomousDecision(life, behavior = BEHAVIOR, {
   }
   const owned = memory.managedActivity === activity || (memory.managedActivity === "curl" && activity === "home");
   if (!owned && now < activityUntil) return null;
-  if (idle < 20) {
+  if (idle < 14 + personality(behavior).active * 38 - personality(behavior).lazy * 8) {
     const wasResting = memory.restSince > 0 || memory.sleepSince > 0;
     memory.restSince = 0;
     memory.sleepSince = 0;
@@ -313,16 +313,14 @@ function season(date) {
   ][date.getMonth()];
 }
 function snapshot(life, now = Date.now()) {
-  const age = Math.max(0, Math.floor((now - life.bornAt) / DAY));
+  const ageInfo=petAge(life.bornAt,now);
   return {
     ...life,
     autonomy: {
       ...(life.autonomy || createAutonomy({}, now)),
       greeting: clamp(((life.autonomy?.welcomeUntil || 0) - now) / 100, 0, 100) / 100,
     },
-    age,
-    growth: 0.84 + 0.16 * Math.pow(Math.min(age / 56, 1), 0.65),
-    stage: age < 14 ? "baby" : age < 56 ? "young" : "adult",
+    ...ageInfo,
     level: 1 + Math.floor(life.xp / 100),
     houseLevel:
       life.house < 25 ? 0 : life.house < 60 ? 1 : life.house < 100 ? 2 : 3,
@@ -447,6 +445,11 @@ function chooseActivity(
     life.lastAttention = now;
     return "attention";
   }
+  const traits = personality(b);
+  if (random() < traits.lazy * .72 + (1-traits.active)*.18)
+    return random() < traits.lazy * .6 ? 'curl' : 'sit';
+  if (random() < traits.curious * .22) return 'sniff';
+  if (random() < traits.active * .32) return 'play';
   const memory = life.autonomy || createAutonomy({}, now);
   // Boredom and remembered play preference alter probabilities slowly, without
   // changing any rewards, need rates, or manually selected activities.
@@ -472,7 +475,7 @@ function chooseActivity(
     "sit",
     ...(memory.playAffinity > 60 ? ["play", "play"] : []),
     ...(memory.calmAffinity > 60 ? ["groom", "sit"] : []),
-    ...(b.windowInteraction ? ["hide"] : []),
+
   ];
   return options[Math.floor(random() * options.length)];
 }

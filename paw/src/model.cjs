@@ -21,6 +21,7 @@ const STATES = new Set([
   "hunt",
   "pet",
 
+  "ear-scratch", "nose-boop",
   "wave",
   "stretch",
   "sad",

@@ -1,4 +1,5 @@
-const THEMES = ["light", "dark", "ocean", "lavender", "rose", "sand", "coffee"];
+const {sanitizeActions} = require('./activity-policy.cjs');
+const THEMES = ["light", "dark", "ocean", "lavender", "rose", "sand", "coffee", "black", "midnight", "plum"];
 const FOOD = {
   dog: ["kibble", "fish", "meat"],
   husky: ["kibble", "fish", "meat"],
@@ -31,6 +32,25 @@ function extraSettings(input = {}) {
         .trim()
         .slice(0, 32);
   return {
+    guideStatus: ["completed", "skipped"].includes(input.guideStatus) ? input.guideStatus : null,
+    guideStep: Math.round(clamp(input.guideStep, 0, 4, 0)),
+    guideReward: input.guideReward === true,
+    petOpacity: clamp(input.petOpacity, .2, 1, 1),
+    clickThrough: input.clickThrough === true,
+    parachuteEnabled: input.parachuteEnabled !== false,
+    energySaver: input.energySaver !== false,
+    smartDnd: input.smartDnd === true,
+    edgeSnap: input.edgeSnap === true,
+    docked: input.docked === true,
+    updateNotifications: input.updateNotifications !== false,
+    displayId: typeof input.displayId === "string" ? input.displayId.slice(0, 40) : "",
+    hotkey: ["CommandOrControl+Shift+P", "CommandOrControl+Alt+P", "Alt+Shift+P", ""].includes(input.hotkey) ? input.hotkey : "CommandOrControl+Shift+P",
+    allowedActivities: sanitizeActions(input.allowedActivities),
+    houseScale: clamp(input.houseScale, .55, 1.8, 1),
+    houseColor: /^#[0-9a-f]{6}$/i.test(input.houseColor || '') ? input.houseColor : '#bd885a',
+    houseAccent: /^#[0-9a-f]{6}$/i.test(input.houseAccent || '') ? input.houseAccent : '#c598ae',
+    housePosition: input.housePosition && ["x", "y"].every(k => Number.isFinite(input.housePosition[k])) ? { x: Math.round(input.housePosition.x), y: Math.round(input.housePosition.y) } : null,
+    breed: ["classic", "siamese", "british", "corgi", "dalmatian"].includes(input.breed) ? input.breed : "classic",
     welcomeVersion: input.welcomeVersion === "0.5" ? "0.5" : null,
     languageConfirmed: input.languageConfirmed === true || input.welcomeVersion === "0.5",
     names,

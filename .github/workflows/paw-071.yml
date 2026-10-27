@@ -1,0 +1,70 @@
+name: Build Paw 0.7.1
+on:
+  push:
+    tags: ['paw-v0.7.1']
+permissions:
+  contents: write
+concurrency:
+  group: paw-installers-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: paw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: paw/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - if: matrix.target == 'win'
+        run: npm run dist:win
+      - if: matrix.target == 'mac'
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Paw-071-${{ matrix.target }}
+          compression-level: 0
+          path: |
+            paw/release/*.zip
+            paw/release/*Setup.exe
+          if-no-files-found: error
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Add standalone source ASAR
+        run: cp Paw-0.7.1-app.asar artifacts/
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS.txt
+      - name: Publish four downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: paw-v0.7.1
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release already exists; preserving published downloads."
+          else
+            gh release create "$TAG" artifacts/* --verify-tag --prerelease --title "Paw 0.7.1" --notes-file paw/RELEASE-0.7.1.md
+          fi

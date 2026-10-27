@@ -63,7 +63,7 @@ function createGameEngine({ now = Date.now, random = Math.random } = {}) {
         life.inventory.worms--;
         g.phase = "waiting";
         g.castAt = t;
-        g.biteAt = t + 1800 + random() * 4500;
+        g.biteAt = t + 900 + random() * 2250;
         g.castX = Math.max(0.15, Math.min(0.9, Number(arg) || 0.5));
         g.progress = 0;
         g.tension = 25;
@@ -175,7 +175,7 @@ function createGameEngine({ now = Date.now, random = Math.random } = {}) {
         );
         g.progress = Math.max(
           0,
-          g.progress + (g.reeling ? (8 + g.rod * 2) * match : -2) * dt,
+          g.progress + (g.reeling ? (16 + g.rod * 4) * match : -2) * dt,
         );
         if (g.tension > 100 || g.tension < 1) g.phase = "escaped";
         if (g.progress >= 100) {
