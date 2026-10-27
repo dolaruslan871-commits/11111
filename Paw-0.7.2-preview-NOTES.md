@@ -1,48 +1,41 @@
-# Paw World handoff — DEVELOPMENT RESUMED
+# Paw 0.7.2 — first playable Paw World lake
 
-Base: Paw 0.7.1. Working version: 0.7.2, UNFINISHED DRAFT.
-Source: /workspace/paw-072. User received the stopped draft on 2026-10-27, then explicitly authorized continuing development. Current task: complete and verify the first lake and deliver installers plus ASAR.
+Status: release candidate, 2026-10-27. Base: Paw 0.7.1. Keep this document and ROADMAP.md in the ASAR for continuation.
 
-## Implemented in the draft
-- Full long-term roadmap and stage boundaries saved in PAW_WORLD_PLAN.md and src/world/ROADMAP.md.
-- Separate World window, restricted preload/IPC, lazy 3D loading, main-process session host, pause reasons, close/dispose paths.
-- Native authoritative world engine: mouse-driven cast parameters, float/bite/hook/fight phases, six lake species, weights, records, assistance, free bread and worms.
-- Shared coins, creel, sale, pet-food allocation, reserved fish, rods/reels/lines/bait shop, idempotent durable operations.
-- Procedural 3D lake, shoreline, forest, dock, reused pet rig, rod/line/float, weather/time and independent quality options.
-- World UI in RU/UK/EN: HUD, shop, creel, collection, settings, instructions, mouse and keyboard input.
-- Optional procedural ambient audio and context-recovery pause support.
-- World progress preserved as life.world through the existing atomic progress store. Legacy games retained behind the original-mini-games link; their sessions now close when their view is disposed.
+## Implemented
+- Separate lazy World window with a procedural 3D forest lake, dock, selected pet, water, weather, dawn/day/sunset and optional local ambient water/birds.
+- Real mouse aiming/power, release to cast, upward hook and hold/release/steer landing; keyboard alternative. Six species, weights, rarity, persistent records and optional assistance.
+- Shared Paw coins, creel, reserved catch, sale and explicit allocation to the existing pet-food inventory; real rods/reels/lines/bait shop. Free bread prevents a soft lock.
+- RU/UK/EN, independent Low/Medium/High graphics. World pauses on focus loss, minimize, user pause and context loss. Closing destroys its renderer; no World simulation in the background.
+- Main-process authoritative rewards, duplicate-operation protection and atomic save queue. Failed writes roll back the World operation and pause for retry. Reopening during close queues a fresh window.
+- Fixed the user's recurring native exception in advanceTransport: Electron rejects JavaScript negative zero as an integer coordinate. Reproduced the exact conversion error in Electron 45. All pet moves normalize negative zero and reject invalid native int32 coordinates.
+- Fixed the user's screenshot menu gap: visible body bounds instead of transparent padding; card bottom aligns with the feet; actual card height is measured; flyout chooses the roomier side.
 
-## Evidence and limits
-- 23 Node tests passed: 12 existing activity/age tests + 11 world engine tests (allocation, duplicate operations, purchases, pause/close, casts, migration and invalid reward commands).
-- Source syntax check passed before the last scene/context-pause refinements.
-- Native Electron launched the entry screen and medium-quality 3D lake. Screenshots: /tmp/paw-072-qa. Reported scene: 150 trees, 263 draw calls, about 147k triangles, 5 textures, 75 geometries.
-- The first mouse test cast successfully and reached the bite. Its asynchronous readiness predicates were incorrect, so its apparent fight/catch screenshots did NOT prove a catch. The test script was corrected.
-- The corrected native test was stopped at the user's request, after opening the lake. Complete mouse fishing, UI sales/feeding, long-run performance, pause/context-loss/close cycles and restart persistence are NOT verified.
-- The last scene changes (irregular shore, camera/foliage/water adjustments) and context-pause refinements have NOT completed visual/regression validation.
-- No 0.7.2 Windows or macOS installer was built. This ASAR is a source/app snapshot for continuation, NOT a tested release.
+## Validation
+- 33 Node tests pass: existing pose/personality/calendar/migration tests plus fishing, economy, saves, rollback, lifecycle, IPC trust, coordinates and menu geometry.
+- Actual Electron 45 + software WebGL: mouse cast -> bite -> upward hook -> held reel -> caught fish. Reserve blocks bulk sale; catch transfers to ordinary pet food; collection remains; buying birch rod debits 140 shared coins and equips it.
+- Low/High/Medium graphics rebuilds, sound after gesture, manual pause/audio suspension and forced WebGL context loss/recovery passed.
+- Restart retained coins, food, age, gear, collection, weather and sound. World closed renderer PID disappears. Desktop pet visibility, walking, held pose and feeding passed after returning.
+- RU/UK/EN opened on repeated close/reopen cycles, with no renderer errors. Native menu height measured 474 px and fit all main rows.
+- Xvfb has no window manager. Minimize/focus handlers were verified with explicit Electron events; actual OS minimize behavior and real hardware FPS require target-device checks.
+- Windows and macOS packages are cross-built and unsigned. Do not describe them as tested on real Windows/macOS. No online services or server are required by World.
 
-## Next work, in order
-1. Start /tmp/paw-xvfb/usr/bin/Xvfb :88 if native tests are needed; do not assume it is running.
-2. Read ROADMAP.md and this handoff, inspect current source. Re-run syntax and existing tests.
-3. Complete an actual mouse cast → bite → upward hook → hold/release/steer → catch. Use synchronous pawWorldInspect().phase predicates or await IPC in a Node polling loop.
-4. Test the creel and shop through the UI: reserve, sell, allocate food, buy/equip, close/reopen and restart; confirm existing coins/age/outfit/house remain intact.
-5. Test focus/minimize/manual pause, graphics rebuild and WebGL loss; repeat open/close cycles and verify no active World renderer/timer/audio remains.
-6. Polish the scene and interaction cues; tune bite/landing times and independent graphics budgets. Verify all three languages and supported window sizes.
-7. Build and validate Windows x64 Setup.exe, Mac arm64 ZIP, Mac x64 ZIP and the final ASAR, then publish externally.
-8. Only after the lake stage is accepted, begin Farm and Forest, then the later waters/aquarium/trophies described in ROADMAP.md.
+## Build and continuation
+- Main source: /workspace/paw-072. Electron 45.0.0, electron-builder 26.18.0. Existing dependencies are a symlink to /workspace/paw-071/node_modules; do not include node_modules in ASAR.
+- npm test. Native QA: /workspace/paw-tools/world-072-smoke.mjs and world-072-lifecycle.mjs. Last evidence lives in /tmp/paw-072-qa (copy out when needed; /tmp can vanish after reconnect).
+- Use explicit cache directories under /tmp for electron-builder. Build mac ZIP x64/arm64 and Windows x64 NSIS with signExecutable=false. The local Linux builder dependency extracts the exact compiler-generated NSIS uninstaller PE using 7zz instead of Wine. This workaround is build tooling only.
+- Distribution filenames: Paw-0.7.2-windows-x64-Setup.exe, Paw-0.7.2-mac-arm64.zip, Paw-0.7.2-mac-x64.zip, Paw-0.7.2-app.asar. Publish checksums and release notes alongside them.
+- External downloads: repository dolaruslan871-commits/11111, branch downloads. Keep all previous downloads. Use a temporary Git index so the unrelated untracked website checkout remains untouched. Installers use Git LFS, ASAR ordinary Git.
 
-## Packaging context
-- Build dependencies live in /workspace/paw-071/node_modules, symlinked by this project. They are NOT part of the ASAR.
-- Electron 45.0.0 and electron-builder 26.18.0.
-- Previous external download repo: dolaruslan871-commits/11111, downloads branch. Large installers use Git LFS; source ASAR files fit ordinary Git.
-- Do not touch the unrelated untracked website in /workspace/11111. Use a temporary Git index for publishing snapshots.
+## Next stages — not implemented
+1. Let the user try this first lake and address feedback or target-device bugs.
+2. Farm: crops, fruit trees, watering, fertilizer, greenhouse; timestamp-based offline growth; explicit pet-food allocation.
+3. Forest: wood/stone gathering, tools, resource regrowth, crafting feeders/workshop/dock/decorations, shared economy.
+4. River, mountain lake, coast, expanded tackle, aquarium/trophy display, optional quests and achievements.
+Read ROADMAP.md / PAW_WORLD_PLAN.md for the full accepted plan. Do not claim Farm, Forest, additional waters, an aquarium or online competitions are already included.
 
-## Recovery checkpoint — 2026-10-27
-- Environment reconnected. Source changes and all files survived. Latest unit suite: 33 passed.
-- Added atomic-operation rollback on failed World saves, a paused retry state and a queued reopen during close.
-- Fixed desktop native integer conversion: reproduced Electron rejecting negative zero with the exact error from the user screenshot. All pet positions now normalize negative zero and reject invalid int32 coordinates.
-- Fixed context menu placement: anchor to bodyRect, align card bottom with feet, measure content height and choose flyout side by actual available space.
-- Current corrected native run has passed actual mouse catch, reserve protection, pet-food transfer, collection retention and real tackle purchase. Further graphics/context/lifecycle checks still running.
-- Native QA script: /workspace/paw-tools/world-072-smoke.mjs.
-- Installer builds started; do not assume completed or verified until release evidence is written.
+## User-supplied 0.7.2 merge
+The final base is the ASAR uploaded later by the user from another account (SHA256 902285fdc0a478ac6d17c3e15d41487df131569b420bbcc0aba130c92fdc8d3c). Its premium surfaces, collapsible sidebar, preview camera, selection/window animations, radial menu changes and installer source are preserved. This session adds the lake and fixes. Sidebar logo/navigation whitespace was reduced as requested. The unchanged World engine keeps the validation above. Repeat the full mouse, native lifecycle, incoming UI and archive checks after this merge; final evidence is distributed separately as Paw-0.7.2-VALIDATION.json. See MERGE_NOTES.json for exact provenance.
+
+## Final pause navigation fix
+Focused integration testing found the pause curtain could cover the Back button after a focus change. Header navigation now stays above the pause curtain, while modal tools/loading stay above the header. Targeted exit-while-paused and repeated-language checks must pass in the packaged archive.
