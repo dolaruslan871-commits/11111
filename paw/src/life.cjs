@@ -2,13 +2,24 @@
 const DAY = 86400000;
 const ACTIVITIES = [
   "idle",
+  "sit",
+  "groom",
+  "yawn",
+  "curl",
+  "wake",
+  "grateful",
+  "sniff",
+  "scratch",
+  "shake",
+  "roll",
+  "chirp",
   "walk",
   "sleep",
   "eat",
   "play",
   "hunt",
   "pet",
-  "stand",
+
   "wave",
   "stretch",
   "sad",
@@ -112,8 +123,17 @@ function createLife(input = {}, now = Date.now()) {
             Object.entries(input.foods)
               .filter(
                 ([k, v]) =>
-                  ["carrot", "cookie", "berries"].includes(k) &&
-                  Number.isFinite(v),
+                  [
+                    "carrot",
+                    "cookie",
+                    "berries",
+                    "fish",
+                    "meat",
+                    "kibble",
+                    "cabbage",
+                    "grain",
+                    "worms",
+                  ].includes(k) && Number.isFinite(v),
               )
               .map(([k, v]) => [k, clamp(v, 0, 100000)]),
           )
@@ -167,7 +187,7 @@ function snapshot(life, now = Date.now()) {
 function tickLife(life, { now = Date.now(), activity = "idle" } = {}) {
   const minutes = clamp((now - life.lastTick) / 60000, 0, 5);
   life.lastTick = now;
-  const sleeping = ["sleep", "home"].includes(activity);
+  const sleeping = ["sleep", "home", "curl"].includes(activity);
   life.energy = clamp(life.energy + (sleeping ? 2.4 : -0.32) * minutes);
   life.hunger = clamp(life.hunger + 0.25 * minutes);
   life.mood = clamp(life.mood + (life.hunger > 80 ? -0.5 : -0.04) * minutes);
@@ -284,7 +304,7 @@ function chooseActivity(
     "stretch",
     "build",
     "dance",
-    ...(b.windowInteraction ? ["hide", "stand"] : []),
+    ...(b.windowInteraction ? ["hide"] : []),
   ];
   return options[Math.floor(random() * options.length)];
 }

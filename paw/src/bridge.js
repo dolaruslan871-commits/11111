@@ -1,3 +1,5 @@
+import * as V5 from "./v5-model-browser.js";
+import { createGameEngine } from "./game-engine-browser.js";
 import * as lifeAPI from "./life-browser.js";
 const initial = {
   behavior: lifeAPI.sanitizeBehavior(),
@@ -38,16 +40,62 @@ try {
   };
 } catch {}
 let previewLife = lifeAPI.createLife(value.life);
+previewLife.inventory = V5.stock(value.life?.inventory);
+previewLife.garden = value.life?.garden || [];
+value = { ...value, ...V5.extraSettings(value) };
+const adventureEngine = createGameEngine();
 value.life = lifeAPI.snapshot(previewLife);
 const listeners = new Set();
 const emit = () => {
   for (const listener of listeners) listener(value);
 };
 export const api = window.paw || {
+  saveStudio: async () => ({
+    ok: false,
+    message: "Сохранение на рабочий стол доступно в установленном Paw.",
+  }),
+  showExport: async () => ({ ok: false }),
+  pickLauncher: async () => ({
+    ok: false,
+    message: "Выбор приложения доступен в установленном Paw.",
+  }),
+  launchShortcut: async () => ({ ok: false }),
+  removeShortcut: async () => ({ ok: false }),
+  openPlayer: async () => ({
+    ok: false,
+    message: "Открытие плеера доступно в установленном Paw.",
+  }),
+  browserSearch: async (query) => {
+    window.open(
+      "https://www.google.com/search?q=" + encodeURIComponent(query),
+      "_blank",
+      "noopener",
+    );
+    return { ok: true };
+  },
+  adventure: async (command, arg) => {
+    const r =
+      command === "start"
+        ? adventureEngine.start(arg, previewLife)
+        : adventureEngine.control(command, arg, previewLife);
+    value.life = {
+      ...value.life,
+      ...lifeAPI.snapshot(previewLife),
+      inventory: previewLife.inventory,
+    };
+    localStorage.setItem("paw-preview", JSON.stringify(value));
+    emit();
+    return { ...r, adventure: adventureEngine.view(previewLife) };
+  },
+  adventureState: async () => {
+    adventureEngine.tick(previewLife);
+    return adventureEngine.view(previewLife);
+  },
   life: async (command, arg) => {
     let result = { ok: true };
     if (command === "food") {
-      lifeAPI.feedFood(previewLife, arg);
+      const r = V5.feedInventory(previewLife, value.skin, arg);
+      if (!r.ok) return r;
       value.activity = "eat";
     } else if (command === "gift") result = lifeAPI.dailyGift(previewLife, []);
     else if (command === "build") {
@@ -57,7 +105,11 @@ export const api = window.paw || {
       previewLife.house = Math.min(100, previewLife.house + 25);
     } else if (command === "birthday") previewLife.birthday = arg;
     else return { ok: false, message: "Доступно в настольном Paw." };
-    value.life = { ...value.life, ...lifeAPI.snapshot(previewLife) };
+    value.life = {
+      ...value.life,
+      ...lifeAPI.snapshot(previewLife),
+      inventory: previewLife.inventory,
+    };
     localStorage.setItem("paw-preview", JSON.stringify(value));
     emit();
     return { ...result, state: value };

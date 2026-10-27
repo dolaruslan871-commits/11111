@@ -41,7 +41,29 @@ export function makeProps(root) {
     g.add(m);
     return m;
   };
-  let g = group("umbrella");
+  let g = group("scratch");
+  line(
+    g,
+    "#a88967",
+    [
+      [-0.43, 0.55, 0.92],
+      [0.43, 0.55, 0.92],
+    ],
+    0.12,
+  );
+  for (const x of [-0.31, 0.31])
+    box(g, "#79614c", x, 0.24, 0.92, 0.08, 0.48, 0.12);
+  for (let i = 0; i < 8; i++)
+    line(
+      g,
+      "#d2bc97",
+      [
+        [i * 0.09 - 0.32, 0.64, 0.88],
+        [i * 0.09 - 0.32, 0.62, 0.99],
+      ],
+      0.012,
+    );
+  g = group("umbrella");
   line(g, "#caa66c", [
     [0.45, 0.45, 0.3],
     [0.42, 1.9, 0.3],
@@ -88,6 +110,7 @@ export function makeProps(root) {
   for (const x of [-0.38, 0.38])
     for (const z of [-0.24, 0.24])
       ball(g, "#e6d6f3", x, 0.015, z, 0.1, 0.1, 0.07);
+  groups.skate.scale.set(0.8, 1, 2.6);
   g = group("scooter");
   box(g, "#79b5c9", 0, 0.05, 0, 0.45, 0.06, 0.9);
   for (const z of [-0.38, 0.38])

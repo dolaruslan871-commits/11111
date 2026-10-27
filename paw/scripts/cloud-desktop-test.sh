@@ -19,4 +19,5 @@ if ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
   done
   if [[ "$ready" != true ]]; then cat .runtime/cloud-xorg-output.log; exit 1; fi
 fi
-node scripts/electron-smoke.cjs
+node scripts/electron-v5.cjs
+node scripts/world-v5.cjs

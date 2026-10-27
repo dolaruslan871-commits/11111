@@ -1,3 +1,5 @@
+import { foodPanel } from "./v5-panels.js";
+import { v } from "./v5-ui.js";
 import { t } from "./i18n.js";
 const esc = (v) =>
   String(v ?? "").replace(
@@ -204,7 +206,7 @@ export function featureContent(page, state, petStage, pets) {
   const metric = (text, value) =>
     `<div class="life-meter" data-meter="${{ Настроение: "mood", Энергия: "energy", Голод: "hunger", Дружба: "friendship" }[text]}"><label>${w(text)}<b>${Math.round(value || 0)}%</b></label><meter min="0" max="100" value="${value || 0}"></meter></div>`;
   if (page === "life")
-    return `<div class="feature-columns"><div>${petStage()}<div class="life-card age-card"><span>${w("Возраст")}</span><strong id="pet-age">${ageLabel(l, state.language)}</strong><span id="life-summary">${w(l.stage === "adult" ? "Взрослый" : l.stage === "young" ? "Подросток" : "Малыш")} · ${w("Уровень")} ${l.level || 1} · 🪙 ${l.coins || 0}</span></div></div><section class="life-card"><h2>${w("Мой питомец")}</h2>${metric("Настроение", l.mood)}${metric("Энергия", l.energy)}${metric("Голод", l.hunger)}${metric("Дружба", l.friendship)}<div class="food-row">${["carrot", "cookie", "berries"].map((f, i) => button(["🥕 Морковка", "🍪 Печенье", "🫐 Ягоды"][i], `data-food="${f}"`)).join("")}</div><h3>${w("Ежедневный подарок")}</h3>${button("Получить подарок", 'id="daily-gift"')}<h3>${w("Домик")} · <span id="house-progress">${Math.round(l.house || 0)}%</span></h3>${button(l.house >= 100 ? "Домик готов" : "Улучшить домик · 20 🪙", `id="build-house" ${l.house >= 100 ? "disabled" : ""}`)}<p class="feature-hint">${w("Прогресс хранится на этом компьютере. Возраст идёт по календарю, рост — в течение восьми недель.")}</p></section></div><section class="life-card behavior-editor"><h2>${w("Характер")}</h2><div class="behavior-grid">${[
+    return `<div class="feature-columns"><div>${petStage()}<div class="life-card age-card"><span>${w("Возраст")}</span><strong id="pet-age">${ageLabel(l, state.language)}</strong><span id="life-summary">${w(l.stage === "adult" ? "Взрослый" : l.stage === "young" ? "Подросток" : "Малыш")} · ${w("Уровень")} ${l.level || 1} · 🪙 ${l.coins || 0}</span></div></div><section class="life-card"><h2>${w("Мой питомец")}</h2>${metric("Настроение", l.mood)}${metric("Энергия", l.energy)}${metric("Голод", l.hunger)}${metric("Дружба", l.friendship)}<div class="food-row">${foodPanel(state)}</div><h3>${w("Ежедневный подарок")}</h3>${button("Получить подарок", 'id="daily-gift"')}<h3>${w("Домик")} · <span id="house-progress">${Math.round(l.house || 0)}%</span></h3>${button(l.house >= 100 ? "Домик готов" : "Улучшить домик · 20 🪙", `id="build-house" ${l.house >= 100 ? "disabled" : ""}`)}<p class="feature-hint">${v("Домик: 20 монет + 10 дерева + 5 камня", state.language)}</p><p class="feature-hint">${w("Прогресс хранится на этом компьютере. Возраст идёт по календарю, рост — в течение восьми недель.")}</p></section></div><section class="life-card behavior-editor"><h2>${w("Характер")}</h2><div class="behavior-grid">${[
       ["active", "Активность"],
       ["curious", "Любопытство"],
       ["lazy", "Лень"],
@@ -463,6 +465,11 @@ async function refreshMetrics(root, state, api) {
   }
 }
 export function refreshFeatures(root, state, api) {
+  root.querySelectorAll("[data-stock]").forEach((e) => {
+    const n = state.life?.inventory?.[e.dataset.stock] ?? 0;
+    e.textContent = n;
+    e.closest("button").disabled = n < 1;
+  });
   void refreshMetrics(root, state, api);
   const w = (text) => word(text, state.language),
     l = state.life || {};

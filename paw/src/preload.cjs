@@ -41,15 +41,13 @@ document.addEventListener(
         });
         return;
       }
-      ipcRenderer
-        .invoke("paw:feed", [...new Set(paths)])
-        .then(reportFeed, () =>
-          reportFeed({
-            ok: false,
-            message:
-              "Не удалось передать файл питомцу. Попробуй кнопку «Покормить».",
-          }),
-        );
+      ipcRenderer.invoke("paw:feed", [...new Set(paths)]).then(reportFeed, () =>
+        reportFeed({
+          ok: false,
+          message:
+            "Не удалось передать файл питомцу. Попробуй кнопку «Покормить».",
+        }),
+      );
     } catch {
       reportFeed({
         ok: false,
@@ -61,6 +59,18 @@ document.addEventListener(
   true,
 );
 contextBridge.exposeInMainWorld("paw", {
+  pickLauncher: (role) => ipcRenderer.invoke("paw:pick-launcher", role),
+  launchShortcut: (index) => ipcRenderer.invoke("paw:launch-shortcut", index),
+  removeShortcut: (index) => ipcRenderer.invoke("paw:remove-shortcut", index),
+  browserSearch: (query) => ipcRenderer.invoke("paw:browser-search", query),
+  openPlayer: () => ipcRenderer.invoke("paw:open-player"),
+  adventure: (command, value) =>
+    ipcRenderer.invoke("paw:adventure", command, value),
+  adventureState: () => ipcRenderer.invoke("paw:adventure-state"),
+  saveStudio: (data, kind) => ipcRenderer.invoke("paw:save-studio", data, kind),
+  showExport: (file) => ipcRenderer.invoke("paw:show-export", file),
+  visualBounds: (rect) => ipcRenderer.invoke("paw:visual-bounds", rect),
+  widgetRects: (rects) => ipcRenderer.invoke("paw:widget-rects", rects),
   life: (command, value) => ipcRenderer.invoke("paw:life", command, value),
   task: (command, value) => ipcRenderer.invoke("paw:task", command, value),
   timer: (command, value) => ipcRenderer.invoke("paw:timer", command, value),

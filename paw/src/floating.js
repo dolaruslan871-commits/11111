@@ -1,5 +1,5 @@
 import { mountPet3D } from "./pet-3d.js";
-import { mountRadialMenu } from "./radial-menu.js";
+import { appearance } from "./v5-ui.js";
 import { petSound, unlockPetAudio, stopPetSounds } from "./sound.js";
 import { createPetInteractions } from "./pet-interactions.js";
 
@@ -14,23 +14,17 @@ const world = document.querySelector("#floating-world"),
   pet = document.querySelector("#floating-pet"),
   bubble = document.querySelector("#pet-bubble");
 let noticeAt = 0;
-const scene = mountPet3D(pet, state),
-  menu = mountRadialMenu(
-    document.querySelector("#radial-host"),
-    api,
-    () => state,
-    notify,
-  );
+const scene = mountPet3D(pet, { ...state, desktopPet: true });
 const interactions = createPetInteractions((name) => api.action(name));
 function update() {
   document.documentElement.dataset.theme = state.theme || "light";
   document.documentElement.lang = state.language || "ru";
-  world.style.transform = `scale(${state.menuOpen ? Math.max(1, state.scale || 1) : state.scale || 1})`;
+  world.style.transform = `scale(${state.scale || 1})`;
   world.classList.toggle("menu-open", !!state.menuOpen);
   world.classList.toggle("is-carrying", state.activity === "carry");
   world.classList.toggle("is-feeding", state.feed?.phase === "working");
   scene.update(state);
-  menu.update();
+  appearance(state);
   if (state.notice && state.notice.at !== noticeAt) {
     noticeAt = state.notice.at;
     bubble.textContent =
@@ -76,7 +70,20 @@ api.onState((next) => {
   update();
   if (
     changed &&
-    ["pet", "eat", "play", "excited", "wave", "angry"].includes(state.activity)
+    [
+      "pet",
+      "eat",
+      "play",
+      "excited",
+      "wave",
+      "angry",
+      "sad",
+      "grateful",
+      "groom",
+      "yawn",
+      "chirp",
+      "shake",
+    ].includes(state.activity)
   )
     petSound(state.skin, state.muted, state.activity);
 });
@@ -156,6 +163,18 @@ window.addEventListener("beforeunload", () => {
   clearTimeout(noticeTimer);
   stopPetSounds();
   scene.dispose();
-  menu.dispose();
 });
 update();
+
+setInterval(() => {
+  if (scene.measure) {
+    const bounds = scene.measure();
+    const k = state.scale || 1;
+    api.visualBounds({
+      x: bounds.x / k,
+      y: bounds.y / k,
+      width: bounds.width / k,
+      height: bounds.height / k,
+    });
+  }
+}, 1000);

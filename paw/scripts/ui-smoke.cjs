@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, "../src"),
   results = path.resolve(__dirname, "../test-results");
 const types = {
   ".js": "text/javascript",
+  ".mjs": "text/javascript",
   ".css": "text/css",
   ".html": "text/html",
   ".json": "application/json",
@@ -46,6 +47,13 @@ const server = http.createServer(async (req, res) => {
       console.error("BROWSER:", e.message);
     });
     await page.goto("http://127.0.0.1:" + server.address().port);
+    await page.locator("#welcome-continue").waitFor();
+    assert.equal(await page.locator(".welcome-parade svg").count(), 9);
+    await page.screenshot({
+      path: path.join(results, "welcome-v5.png"),
+      fullPage: true,
+    });
+    await page.locator("#welcome-continue").click();
     await page.locator(".pet-card[data-skin=husky]").waitFor();
     assert.equal(await page.locator(".pet-card").count(), 9);
     await page.evaluate(
@@ -57,7 +65,7 @@ const server = http.createServer(async (req, res) => {
       fullPage: true,
     });
     await page.locator("[data-page=settings]").click();
-    await page.locator("button[data-theme=dark]").click();
+    await page.locator("button[data-theme=dark]").first().click();
     await page.locator("#setting-top").click();
     assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
     for (const lang of ["en", "uk", "ru", "en", "ru"])
@@ -69,13 +77,14 @@ const server = http.createServer(async (req, res) => {
       ),
       "settings navigation keeps the same WebGL canvas",
     );
+    await page.locator("#ui-mode").click();
     await page.locator("[data-page=life]").click();
     await page.locator("[data-behavior=active]").fill("80");
     await page.locator("[data-behavior=active]").dispatchEvent("change");
     await page.locator("#companion").selectOption("rabbit");
     await page.locator("#pet-age").waitFor();
     assert.ok((await page.locator("#pet-age").textContent()).includes("0"));
-    await page.locator("[data-food=carrot]").click();
+    await page.locator("[data-food=kibble]").click();
     await page.locator("#daily-gift").click();
     await page.screenshot({
       path: path.join(results, "life-dark.png"),
@@ -104,6 +113,34 @@ const server = http.createServer(async (req, res) => {
       path: path.join(results, "wardrobe-dark.png"),
       fullPage: true,
     });
+    await page.locator("[data-page=games]").click();
+    await page.locator("[data-adventure=fishing]").click();
+    await page.waitForTimeout(350);
+    await page.screenshot({
+      path: path.join(results, "fishing-v5.png"),
+      fullPage: true,
+    });
+    await page.locator("[data-adventure=wood]").click();
+    await page.waitForTimeout(350);
+    await page.screenshot({
+      path: path.join(results, "forest-v5.png"),
+      fullPage: true,
+    });
+    await page.locator("[data-adventure=garden]").click();
+    await page.locator('[data-plot="0"]').click();
+    await page.waitForTimeout(250);
+    await page.locator('[data-plot="0"]').click();
+    await page.screenshot({
+      path: path.join(results, "garden-v5.png"),
+      fullPage: true,
+    });
+    await page.locator("[data-page=studio]").click();
+    await page.locator("#studio-action").selectOption("sit");
+    await page.screenshot({
+      path: path.join(results, "studio-v5.png"),
+      fullPage: true,
+    });
+    await page.locator("[data-page=wardrobe]").click();
     const model = await page.evaluate(async () => {
       const { mountPet3D } = await import("./pet-3d.js"),
         { pets } = await import("./pet-art.js"),
@@ -159,6 +196,24 @@ const server = http.createServer(async (req, res) => {
       scene.update({ companion: "rabbit" });
       await new Promise((r) => setTimeout(r, 50));
       const companion = scene.inspect().companion;
+      scene.update({
+        companion: null,
+        skin: "owl",
+        activity: "walk",
+        outfit: {},
+      });
+      const owl = scene.inspect();
+      scene.update({ skin: "cat", activity: "curl" });
+      const curled = scene.inspect();
+      scene.update({ skin: "croc", activity: "walk" });
+      const croc = scene.inspect();
+      scene.update({ skin: "husky", activity: "sit", outfit: { toy: "ball" } });
+      const toyAtRest = scene.inspect().toyVisible;
+      scene.update({ activity: "walk" });
+      const toyWalking = scene.inspect().toyVisible;
+      scene.update({ activity: "sleep", outfit: {} });
+      const autoOutfit = host.dataset.outfit;
+
       scene.dispose();
       host.remove();
       return {
@@ -166,12 +221,31 @@ const server = http.createServer(async (req, res) => {
         first,
         props,
         companion,
+        owl,
+        curled,
+        croc,
+        toyAtRest,
+        toyWalking,
+        autoOutfit,
         expected: pets.length * Object.values(catalog.wardrobe).flat().length,
       };
     });
     assert.equal(model.first.renderer, "webgl");
     assert.equal(model.checked, model.expected);
     assert.ok(model.companion);
+    assert.ok(
+      model.owl.wings.every((a) => Math.abs(a) > 0.2),
+      "owl wings flap during movement",
+    );
+    assert.ok(
+      model.curled.bodyRotation > 0.8,
+      "resting animal curls on its side",
+    );
+    assert.ok(model.croc.bodyY < -0.2, "crocodile crawls low");
+    assert.equal(model.toyAtRest, true);
+    assert.equal(model.toyWalking, false);
+    assert.equal(model.autoOutfit, "");
+
     for (const key of [
       "umbrella",
       "fan",

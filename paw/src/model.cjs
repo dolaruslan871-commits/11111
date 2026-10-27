@@ -1,3 +1,4 @@
+const { extraSettings } = require("./v5-model.cjs");
 const { ACTIVITIES, sanitizeBehavior } = require("./life.cjs");
 const SKINS = new Set([
   "fox",
@@ -19,7 +20,7 @@ const STATES = new Set([
   "play",
   "hunt",
   "pet",
-  "stand",
+
   "wave",
   "stretch",
   "sad",
@@ -58,6 +59,7 @@ function sanitizeSettings(input = {}) {
       ? input.outfit[key]
       : "none";
   return {
+    ...extraSettings(input),
     behavior: sanitizeBehavior(input.behavior),
     companion: SKINS.has(input.companion) ? input.companion : null,
     autostart: input.autostart === true,
@@ -69,7 +71,7 @@ function sanitizeSettings(input = {}) {
     language: ["ru", "uk", "en"].includes(input.language)
       ? input.language
       : "ru",
-    theme: input.theme === "dark" ? "dark" : "light",
+
     scale:
       typeof input.scale === "number" && Number.isFinite(input.scale)
         ? Math.max(0.6, Math.min(1.6, input.scale))

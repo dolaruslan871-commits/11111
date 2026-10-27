@@ -1,6 +1,6 @@
 {
   "name": "paw-desktop-pet",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Paw \u2014 a little friend for your desktop",
   "author": "Paw",
@@ -9,7 +9,7 @@
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
     "test:ui": "node scripts/ui-smoke.cjs",
-    "test:desktop": "node scripts/electron-smoke.cjs",
+    "test:desktop": "node scripts/electron-v5.cjs",
     "preview": "python3 -m http.server 4173 --bind 127.0.0.1 --directory src",
     "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never",
     "dist:win": "electron-builder --win nsis --x64 --publish never",
@@ -19,6 +19,7 @@
   "devDependencies": {
     "electron": "45.0.0",
     "electron-builder": "26.18.0",
+    "mp4-muxer": "5.2.2",
     "playwright-core": "1.64.1",
     "three": "0.186.1"
   },
@@ -50,7 +51,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "artifactName": "Paw-${version}-windows-${arch}-Setup.${ext}"
     },
     "artifactName": "Paw-${version}-${os}-${arch}.${ext}",

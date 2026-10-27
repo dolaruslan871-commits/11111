@@ -1,63 +1,35 @@
-# Paw 0.4 — desktop pet
+# Paw 0.5
 
-Paw is an offline-first Electron desktop pet for Windows x64 and macOS Intel / Apple Silicon. Version 0.4 is based on the user's supplied `Paw-0.3.0-app.asar`; the upload was extracted without executing it. AI integration is deliberately excluded.
+Desktop pets for Windows x64 and macOS Intel / Apple Silicon, built on the user's supplied 0.3 archive and the published 0.4 release. No AI integration. See [the Russian user guide](docs/VERSION_05.md) for the complete 0.5 changes and controls.
 
-## Install / update
+## Download / update
 
-Download the native build from the GitHub release linked in `RELEASE_NOTES.md`.
+Use the external GitHub release assets, not the source archive:
 
-- **Windows:** close Paw from its tray menu, run `Paw-0.4.0-windows-x64-Setup.exe`, and finish installation. The installer creates a desktop shortcut.
-- **Mac Intel:** download `Paw-0.4.0-mac-x64.zip`.
-- **Mac M1/M2/M3/M4 and later Apple Silicon:** download `Paw-0.4.0-mac-arm64.zip`.
-- **Mac:** quit Paw, extract with macOS **Archive Utility**, and drag the whole **Paw.app** into **Applications**, replacing the previous app. Open Paw from Applications. Do not open or move its internal `Contents` directory. ZIP archives for Mac contain the complete `.app`; they are not Windows installers.
+- `Paw-0.5.0-windows-x64-Setup.exe`: quit Paw, run Setup. A desktop shortcut is created.
+- `Paw-0.5.0-mac-x64.zip`: Mac Intel.
+- `Paw-0.5.0-mac-arm64.zip`: Mac Apple Silicon.
 
-Installed builds need no Node.js, terminal, or npm. The existing settings directory remains `paw-desktop-pet`, so 0.3 outfits and settings migrate. New life progress lives separately in `progress.json` beside `preferences.json`. Builds are unsigned and not notarized; operating system security prompts may appear.
+On Mac, extract with **Archive Utility**, move the **entire Paw.app** into **Applications**, replacing the previous version, then open it. A Desktop link is created on first packaged launch (subject to Desktop permissions). Never move the internal Contents folder. No terminal/npm required for installed builds.
 
-## Life and behavior
+Existing `paw-desktop-pet` preferences and progress are retained. The 0.5 welcome appears once, with all nine pets and a Continue button. Builds are unsigned / unnotarized previews; OS security prompts may appear.
 
-The **Personality / Характер** page shows age, mood, energy, hunger, friendship, level, coins, and house progress. Adoption starts on the first 0.4 launch. Age continues while Paw is closed. Growth is tied to real elapsed days, not XP or time spent clicking: a visible small increase each week, young stage after two weeks, adult size after eight weeks. Babies also have proportionally larger heads. Size in Settings remains an independent display scale.
+## What's in 0.5
 
-The pet walks, sleeps after computer inactivity, greets the returning user, follows a nearby cursor, seeks attention, and reacts to mood, energy, weather and local time. Personality controls include activity, curiosity, laziness, walk/attention frequency, quiet hours, night sleep, reminder intervals, movement mode, optional app/window reactions, seasons and zero gravity.
-
-Select a city in **Settings** for Open-Meteo weather. Rain produces an umbrella/raincoat; snow adds a scarf; heat produces a fan. Night sleep uses pajamas when no outfit overrides that slot. Seasons add optional snowflakes, leaves or flowers. Christmas and Halloween use temporary seasonal hats in empty outfit slots; saved outfits are retained. Enter your birthday for the annual cake animation.
-
-Two pets can share the desktop: select a companion in Personality. They meet, play, chase, briefly quarrel and rest together. A house grows from a box to a cabin by spending earned coins. The pet can rest in it and peek out.
-
-## Pets and graphics
-
-Nine characters: dog, cat, crocodile, kangaroo, dinosaur, owl, rabbit, fox, and the husky **Хася / Hasya**. The husky has a separate gray-white palette, facial mask, blue irises, upright ears, cheek/neck tufts, white paws and a curled fluffy tail. The owl, kangaroo and dinosaur have slimmer silhouettes. The inappropriate shared front collar is removed from those species. Faces, eyes and silhouettes have additional detail; clothes follow the body and limbs. Rendering uses locally packaged Three.js, capped pixel ratio, 30 fps and pauses when hidden/detached.
-
-Dark theme is neutral black/graphite with muted lavender accents and glass panels. Light theme and Russian/Ukrainian/English remain available. The same WebGL canvas is retained when switching pages, languages and themes.
-
-## Play, rewards and gestures
-
-- Double click: pet the animal. Repeated paw taps: anger. Tail tap: chase tail.
-- Five quick ear taps: detective animation. Fast 360° rotation: dance.
-- Four 30-second click games: fishing (wait for the bite), butterflies, ball, and hide-and-seek. Each successful catch awards game coins when the round completes, with a bounded reward. Game IDs and target transitions are checked in the main process.
-- One gift per local calendar day: accessory or coins. New reward items cost coins; the existing 0.3 wardrobe stays accessible.
-- Carrot, cookie and berries affect hunger, mood and favorite food. Food is virtual and separate from file feeding.
-- Skateboard, scooter, jetpack, zero gravity, painting, books, gamepad, umbrella, fan, gifts and birthday cake have procedural 3D props and animations.
-- Drag the preview or use its rotation slider to inspect clothes through 360°.
-
-## Desktop tools
-
-The right-click glass menu opens audio/Bluetooth controls, weather, one app shortcut, music, timer, notes, screenshot, search, computer indicators, games and Personality.
-
-- Timer and dated alarm; saved across restarts. Due notes and timers are processed even while the menu is open. Pet gestures and icons signal reminders; task text is shown in the dashboard.
-- Notes with optional due times, completion and deletion.
-- Play/pause, next/previous and volume-step media commands through the OS.
-- Screenshots through Electron desktop capture: whole display or a dragged rectangle, saved as a local PNG through a Save dialog. Capture occurs only after the user requests it.
-- File/app search uses macOS Spotlight or Windows Search's system index plus local app directories. Only returned search results can be launched. A separate button opens a web search in the default browser.
-- CPU utilization and RAM use actual OS counters; battery uses native tools. Temperature is explicitly unavailable when there is no supported standard sensor interface. Indicators do not invent values.
-- Optional window reactions use foreground-window bounds to approach edges and upper borders. Hiding is represented by clipping the pet; this is not full occlusion/compositing behind every arbitrary app. macOS may require Automation / Accessibility permission; unsupported window services fail quietly.
-- Optional app reactions recognize common code editors, games and music apps by process name. They do not inspect document text or upload app activity.
-- Device sound mute uses macOS volume settings / Windows Core Audio, not the pet's own mute switch. Bluetooth on macOS uses an installed `blueutil` helper when available; otherwise Paw opens Bluetooth settings. Windows uses WinRT radios. These features depend on OS permissions and hardware.
-
-## File feeding
-
-Explicitly dropped files **and folders** go through the native system Trash / Recycle Bin, following an eating or carrying animation. There is no delete confirmation on a drop and no permanent-delete fallback. Selecting parent and child together trashes the parent once. Links and protected roots / running app ancestors are rejected. Real source disappearance is checked; errors are not displayed as success. Virtual treats do not touch files.
+- Independent glass quick-menu window above/right of the pet, adjusted at screen edges. Inline player, timer, notes, browser-configurable Google search and up to 24 app launchers.
+- Species-specific movement/rest, sit/groom/yawn/curl/ten-minute sleep/wake sequence, more gestures, mood ears/tails, original varied synthesized voices and age-dependent stylized fur.
+- Nine characters: dog, cat, crocodile, kangaroo, dinosaur, owl, rabbit, fox and husky Hasya. Rename pets except Hasya, with the requested creator's-pet note.
+- User-selected outfits only; retained explicit outfits migrate. Removed automatic pajama/seasonal dressing and the screen-paw pose.
+- Independent static house/toy windows, configurable house visibility and toy distance. Building uses coins, wood and stone. Species-appropriate inventory feeding, bowl/ground meal and gratitude.
+- Stateful fishing with bait/cast/bite/hook/steering/tension/reeling, persistent crop growing, bird forage and wood/stone resource games. Rewards and costs are validated in the main process.
+- Studio: orbit/elevation/zoom/actions/backgrounds, high-resolution PNG and 1–12-second clips. Primary H.264/MP4 export uses explicit 30 fps frame timestamps; render time may exceed clip duration on slow graphics. MediaRecorder fallback uses a supported format. Formats include vertical 9:16, portrait 4:5, square and widescreen. Exports go to Desktop; no screen/microphone capture is included in pet clips.
+- Five additional themes (seven total), glass and opacity controls, simple/detailed UI. Native blur is conditional on platform support.
+- Visible-model edge clamping, rather than trapping transparent window margins on-screen; display work areas and scaling are respected.
+- Preserved reversible native file/folder Trash feeding, actual CPU/RAM/battery, optional weather/app/window reactions, reminders and screenshots.
 
 ## Development
+
+Node 24, Electron 45, pinned Three.js 0.186.1. All runtime art, geometry, modules and muxer code are local; no CDN dependencies.
 
 ```sh
 cd paw
@@ -67,19 +39,26 @@ npm test
 npm start
 ```
 
-Node 24 is used in CI. All Three.js modules and original vector art are local, without CDN runtime dependencies. Synthesized voices are original animal-inspired sounds, not recordings. `npm run vendor` also regenerates the browser preview copy of the tested pure life engine.
+`vendor` copies pinned Three.js and the pure MP4 muxer plus licenses, and generates browser versions of tested pure CommonJS model/game modules.
 
 ```sh
 npm run test:ui
-bash scripts/cloud-desktop-test.sh
+bash scripts/cloud-desktop-test.sh  # Linux Xorg dummy driver harness
+npm run test:desktop              # Existing desktop display, disposable test profile
 npm run dist:win
 npm run dist:mac
 ```
 
-The browser preview supports appearance/personality and illustrative virtual life, notes and timer state. OS controls, native screenshots, native game reward persistence and file trashing require the desktop app. It is not an installer.
+The browser preview supports appearance, life/game interaction and studio rendering. Native OS controls, app pickers and Desktop file writing require the installed app. No browser preview action pretends to trash local files.
 
-## Validation and limits
+Native acceptance tests pass an explicit disposable development profile and redirect export files into the fixture's Desktop. Packaged apps ignore this development-only profile flag. Tests only trash generated disposable folders, using the actual native Trash API; they do not invoke permanent deletion.
 
-Unit tests cover calendar growth, rest/return, quiet hours, weather responses, daily gift limits, food, reminders, birthdays, preference migration, gestures, OS command validation, weather request/cache behavior and reversible folder feeding. Browser tests construct all catalog options across all species using real WebGL. Native Linux integration checks sandboxed preload IPC, menu, timers/tasks, gifts, game reward boundaries, a real folder+child Trash drop, and restart persistence.
+## Validation / platform limits
 
-Mac ZIPs are cross-packaged on Ubuntu; Windows NSIS is built on Windows. Real Mac/Windows GUI, Bluetooth hardware, system media dispatch and OS permission dialogs cannot be fully verified on the Linux development machine. Check these on target hardware. The application is a procedural desktop pet, not a biological simulator; movement and game modes are deliberately lightweight.
+Tests cover age persistence, rest timing, diets/inventory, crop watering/growth/harvesting, fishing controls and rewards, resource-spam limits, settings migration/Hasya protection, gestures, visible bounds and native folder feeding. UI tests build every wardrobe combination for all nine species and exercise themes/languages, retained WebGL canvas, games, studio and requested poses. Native integration verifies first-run welcome, menu panels, real PNG/video Desktop exports, garden persistence, folder Trash drops, static habitat windows, construction costs and four-corner placement.
+
+Mac ZIPs are cross-packaged on Ubuntu; NSIS is built on Windows. Hardware audio/Bluetooth, native OS permissions, real multi-monitor arrangements and the Mac/Windows GUI still require target-machine testing. macOS Bluetooth direct toggling uses an available blueutil helper, otherwise settings open. Temperature remains explicitly unavailable without a supported sensor interface. Indexed search is limited by the OS's index. Native media commands depend on the active player's support. Window-edge hiding remains approximate rather than full arbitrary-app occlusion.
+
+## Credits
+
+Original procedural pets, vector art and voices. Three.js and the pinned MP4 muxer are MIT-licensed; their license files are included in `src/vendor`. The muxer packages encoded frames only; encoding uses Chromium's on-device WebCodecs/MediaRecorder APIs. Weather is supplied by Open-Meteo / GeoNames when a city is configured.

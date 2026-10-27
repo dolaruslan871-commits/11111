@@ -1,3 +1,5 @@
+import { makeMeal } from "./meal-props.js";
+import { applyPoseV5 } from "./v5-pose.js";
 import * as THREE from "./vendor/three.module.js";
 import { makeProps } from "./pet-props.js";
 import catalog from "./catalog.json" with { type: "json" };
@@ -5,6 +7,7 @@ import { renderPet } from "./pet-art.js";
 
 // Original procedural toy sculptures. No remote models, textures or CDN requests.
 const TAU = Math.PI * 2;
+let detailFactor = 1;
 const PALETTES = {
   fox: {
     fur: "#d69261",
@@ -94,6 +97,7 @@ function material(color, extra = {}) {
   });
 }
 function sphere(parent, mat, pos, scale, segments = 24) {
+  if (segments >= 20) segments = Math.round(segments * detailFactor);
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(
       1,
@@ -120,7 +124,13 @@ function tube(parent, mat, points, radius = 0.04) {
     points.map((p) => new THREE.Vector3(...p)),
   );
   const mesh = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 18, radius, 9, false),
+    new THREE.TubeGeometry(
+      curve,
+      Math.round(18 * detailFactor),
+      radius,
+      Math.round(9 * detailFactor),
+      false,
+    ),
     mat,
   );
   parent.add(mesh);
@@ -196,6 +206,7 @@ function disposeTree(root) {
     materials = new Set(),
     textures = new Set();
   root.traverse((object) => {
+    if (object.isInstancedMesh) object.dispose();
     if (object.geometry) geometries.add(object.geometry);
     for (const mat of [object.material].flat().filter(Boolean)) {
       materials.add(mat);
@@ -207,7 +218,8 @@ function disposeTree(root) {
   textures.forEach((t) => t.dispose());
 }
 
-function sculpture(skin, outfit = {}) {
+function sculpture(skin, outfit = {}, detailed = false) {
+  detailFactor = detailed ? 2 : 1;
   const palette = PALETTES[skin] || PALETTES.dog;
   const mats = Object.fromEntries(
     Object.entries(palette).map(([key, color]) => [key, material(color)]),
@@ -358,25 +370,30 @@ function sculpture(skin, outfit = {}) {
     }
     if (skin === "cat" || skin === "husky" || skin === "fox") {
       for (const x of [-0.38, 0.38]) {
-        const ear = cone(
-          head,
+        const ear = new THREE.Group();
+        ear.position.set(x, 0.32, -0.015);
+        head.add(ear);
+        ear.userData.hitRegion = "ear";
+        ear.userData.baseZ = 0;
+        cone(
+          ear,
           mats.fur,
-          [x, 0.43, -0.015],
+          [0, 0.11, 0],
           0.19,
           0.42,
           [0, 0, x < 0 ? 0.25 : -0.25],
           3,
         );
-        ear.userData.hitRegion = "ear";
         cone(
-          head,
+          ear,
           mats.pink,
-          [x, 0.43, 0.065],
+          [0, 0.11, 0.08],
           0.115,
           0.25,
           [0, 0, x < 0 ? 0.25 : -0.25],
           3,
         );
+        ears.push(ear);
       }
       if (skin === "cat")
         for (const side of [-1, 1])
@@ -581,11 +598,18 @@ function sculpture(skin, outfit = {}) {
       }
       // Paw-pad undersides become visible when the pet presses the screen.
       sphere(foot, mats.pink, [0, -0.91, 0.08], [0.4, 0.09, 0.29], 12);
-      for (const x of [-0.55, 0, 0.55])
-        sphere(foot, mats.pink, [x, -0.86, 0.57], [0.19, 0.08, 0.16], 10);
+      for (const x of [-0.42, 0, 0.42])
+        sphere(foot, mats.pink, [x, -0.78, 0.45], [0.15, 0.05, 0.12], 10);
       for (const x of [-0.055, 0.055])
         sphere(hip, mats.dark, [x, -0.44, 0.25], [0.007, 0.015, 0.016], 10);
-      legs.push({ pivot: hip, front, side, base: hip.position.clone() });
+      legs.push({
+        foot,
+        footBase: foot.position.clone(),
+        pivot: hip,
+        front,
+        side,
+        base: hip.position.clone(),
+      });
     }
   const tail = new THREE.Group();
   tail.position.set(0, 0.83, upright ? -0.45 : -0.71);
@@ -684,15 +708,7 @@ function sculpture(skin, outfit = {}) {
       0.008,
     );
   }
-  // A tiny collar makes even the undressed friend feel cared for.
-  if (["dog", "cat", "husky"].includes(skin)) {
-    ring(torso, material("#a494bb"), [0, 0.96, 0.58], 0.31, 0.025, [
-      Math.PI / 2.8,
-      0,
-      0,
-    ]);
-    sphere(torso, mats.gold, [0, 0.7, 0.74], [0.045, 0.055, 0.024]);
-  }
+  // Collars are selected by the user through the wardrobe.
   const outfitRoot = new THREE.Group();
   torso.add(outfitRoot);
   const toy = new THREE.Group();
@@ -739,9 +755,40 @@ function sculpture(skin, outfit = {}) {
       [0.018, 0.022, 0.015],
       8,
     );
+  let ageFur = null;
+  if (["dog", "cat", "husky", "fox", "rabbit", "kangaroo"].includes(skin)) {
+    const count = 100,
+      geo = new THREE.ConeGeometry(0.014, 0.07, 3),
+      fur = new THREE.InstancedMesh(geo, mats.fur, count),
+      matrix = new THREE.Object3D();
+    for (let i = 0; i < count; i++) {
+      const y = 1 - (2 * (i + 0.5)) / count,
+        phi = i * 2.399963,
+        r = Math.sqrt(1 - y * y),
+        x = r * Math.cos(phi),
+        z = r * Math.sin(phi);
+      matrix.position.set(
+        x * bodyScale[0],
+        0.8 + y * bodyScale[1],
+        -0.03 + z * bodyScale[2],
+      );
+      matrix.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(x, y, z).normalize(),
+      );
+      matrix.updateMatrix();
+      fur.setMatrixAt(i, matrix.matrix);
+    }
+    torso.add(fur);
+    ageFur = fur;
+  }
   const headScale = head.scale.clone();
   const props = makeProps(root);
+  const meal = makeMeal(root);
+  detailFactor = 1;
   return {
+    meal,
+    ageFur,
     headScale,
     props,
     root,
@@ -1410,6 +1457,8 @@ function flower(parent, color, accent, position, size) {
 }
 
 function pose(pet, state, time, reduced) {
+  if (state.approachingHouse || state.approachingToy)
+    state = { ...state, activity: "walk" };
   const activity = state.activity || "idle",
     walking = GAITS.has(activity),
     emotion =
@@ -1429,8 +1478,8 @@ function pose(pet, state, time, reduced) {
       (0.75 + (state.behavior?.active ?? 55) / 200),
     phase = time * speed,
     breathing = Math.sin(time * 2.2) * 0.012;
-  const stand = ["stand", "wave", "attention", "break"].includes(activity),
-    sleeping = ["sleep", "home"].includes(activity);
+  const stand = ["wave"].includes(activity),
+    sleeping = ["sleep", "home", "curl"].includes(activity);
   const facing = Number.isFinite(state.viewRotation)
     ? state.viewRotation
     : walking
@@ -1632,6 +1681,7 @@ function pose(pet, state, time, reduced) {
     0.45,
   );
   pet.toy.rotation.z = activity === "play" ? Math.sin(time * 3) * 0.3 : 0;
+  applyPoseV5(pet, state, time);
 }
 
 export function mountPet3D(container, initialState = {}, options = {}) {
@@ -1644,7 +1694,11 @@ export function mountPet3D(container, initialState = {}, options = {}) {
     lastRender = 0,
     start = performance.now(),
     renderer,
-    viewRotation = null;
+    viewRotation = null,
+    captureSize = null,
+    elevation = 0.35,
+    cameraZoom = 1,
+    frameTime = null;
   const reduced =
     window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   const scene = new THREE.Scene();
@@ -1735,10 +1789,12 @@ export function mountPet3D(container, initialState = {}, options = {}) {
   }
   function resize() {
     if (disposed) return;
-    const width = Math.max(1, container.clientWidth || 240),
-      height = Math.max(1, container.clientHeight || 230),
+    const width =
+        captureSize?.width || Math.max(1, container.clientWidth || 240),
+      height =
+        captureSize?.height || Math.max(1, container.clientHeight || 230),
       aspect = width / height;
-    const zoom = state.companion ? 1.6 : 1.36;
+    const zoom = (state.companion ? 1.6 : 1.36) / cameraZoom;
     camera.left = -zoom * aspect;
     camera.right = zoom * aspect;
     camera.top = zoom;
@@ -1757,39 +1813,7 @@ export function mountPet3D(container, initialState = {}, options = {}) {
   renderer.domElement.addEventListener("webglcontextlost", contextLost);
   function rebuild() {
     const visualOutfit = { ...state.outfit };
-    const now = new Date();
-    if (
-      ["sleep", "home"].includes(state.activity) &&
-      state.behavior?.nightSleep !== false &&
-      (!visualOutfit.clothing || visualOutfit.clothing === "none")
-    )
-      visualOutfit.clothing = "pajamas";
-    if (
-      state.activity === "umbrella" &&
-      (!visualOutfit.clothing || visualOutfit.clothing === "none")
-    )
-      visualOutfit.clothing = "raincoat";
-    if (
-      state.behavior?.weatherReactions &&
-      state.weather?.ok &&
-      state.weather.code >= 71 &&
-      state.weather.code <= 77 &&
-      (!visualOutfit.scarf || visualOutfit.scarf === "none")
-    )
-      visualOutfit.scarf = "winter";
-    if (
-      state.behavior?.seasons !== false &&
-      (!visualOutfit.hat || visualOutfit.hat === "none")
-    ) {
-      if (
-        (now.getMonth() === 11 && now.getDate() >= 24) ||
-        (now.getMonth() === 0 && now.getDate() === 1)
-      )
-        visualOutfit.hat = "santa";
-      if (now.getMonth() === 9 && now.getDate() === 31)
-        visualOutfit.hat = "witch";
-    }
-    const key = `${state.skin}:${state.companion}:${JSON.stringify(visualOutfit)}`;
+    const key = `${state.skin}:${state.companion}:${!!state.studioQuality}:${JSON.stringify(visualOutfit)}`;
     if (key === signature) return;
     signature = key;
     if (companion) {
@@ -1801,7 +1825,7 @@ export function mountPet3D(container, initialState = {}, options = {}) {
       scene.remove(pet.root);
       disposeTree(pet.root);
     }
-    pet = sculpture(state.skin, visualOutfit);
+    pet = sculpture(state.skin, visualOutfit, state.studioQuality);
     scene.add(pet.root);
     if (state.companion) {
       companion = sculpture(state.companion, {});
@@ -1821,6 +1845,7 @@ export function mountPet3D(container, initialState = {}, options = {}) {
     if (disposed) return;
     frame = requestAnimationFrame(draw);
     if (
+      frameTime !== null ||
       document.hidden ||
       !container.isConnected ||
       now - lastRender < 1000 / (reduced ? 12 : 30)
@@ -1833,7 +1858,7 @@ export function mountPet3D(container, initialState = {}, options = {}) {
     if (companion) {
       // The pair alternates meeting, play, a chase, a brief disagreement and rest.
       const cycle = time % 65,
-        rest = ["sleep", "home"].includes(state.activity),
+        rest = ["sleep", "home", "curl"].includes(state.activity),
         chasing = !rest && cycle >= 22 && cycle < 39,
         quarrel = !rest && cycle >= 43 && cycle < 47;
       const companionActivity = rest
@@ -1941,6 +1966,93 @@ export function mountPet3D(container, initialState = {}, options = {}) {
       }
       return "body";
     },
+    setCamera({ angle, elevation: height, zoom } = {}) {
+      if (Number.isFinite(angle)) viewRotation = angle;
+      if (Number.isFinite(height))
+        elevation = Math.max(0.05, Math.min(1.2, height));
+      if (Number.isFinite(zoom))
+        cameraZoom = Math.max(0.7, Math.min(1.5, zoom));
+      camera.position.set(3.6, 1 + Math.sin(elevation) * 5, 5.5);
+      camera.lookAt(0, 0.92, 0);
+      resize();
+    },
+    renderFrame(time) {
+      frameTime = Number.isFinite(time) ? time : null;
+      if (frameTime === null) return;
+      pose(pet, { ...state, viewRotation }, frameTime, false);
+      renderer.render(scene, camera);
+    },
+    canvas: renderer.domElement,
+    setCaptureSize(width, height) {
+      if (width && height) {
+        captureSize = { width, height };
+        renderer.setPixelRatio(1);
+      } else {
+        captureSize = null;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      }
+      resize();
+      renderer.render(scene, camera);
+    },
+    async snapshot(width, height, background = "#eae6f0") {
+      const old = scene.background;
+      scene.background =
+        background === "transparent" ? null : new THREE.Color(background);
+      captureSize = { width, height };
+      renderer.setPixelRatio(1);
+      resize();
+      renderer.render(scene, camera);
+      const blob = await new Promise((resolve) =>
+        renderer.domElement.toBlob(resolve, "image/png"),
+      );
+      scene.background = old;
+      captureSize = null;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      resize();
+      return blob;
+    },
+    setBackground(color) {
+      scene.background =
+        color === "transparent" ? null : new THREE.Color(color);
+    },
+    measure() {
+      pet.root.updateMatrixWorld(true);
+      const bounds = new THREE.Box3();
+      if (companion) companion.root.updateMatrixWorld(true);
+      for (const body of [pet.torso, companion?.torso].filter(Boolean))
+        body.traverse((object) => {
+          if (!object.isMesh) return;
+          for (let p = object; p; p = p.parent) if (!p.visible) return;
+          object.geometry.computeBoundingBox();
+          bounds.union(
+            object.geometry.boundingBox
+              .clone()
+              .applyMatrix4(object.matrixWorld),
+          );
+        });
+      const r = container.getBoundingClientRect();
+      let left = 1,
+        top = 1,
+        right = -1,
+        bottom = -1;
+      for (const x of [bounds.min.x, bounds.max.x])
+        for (const y of [bounds.min.y, bounds.max.y])
+          for (const z of [bounds.min.z, bounds.max.z]) {
+            const p = new THREE.Vector3(x, y, z).project(camera);
+            left = Math.min(left, p.x);
+            right = Math.max(right, p.x);
+            top = Math.min(top, p.y);
+            bottom = Math.max(bottom, p.y);
+          }
+      const px = Math.max(0, ((left + 1) / 2) * r.width),
+        py = Math.max(0, ((1 - bottom) / 2) * r.height);
+      return {
+        x: r.x + px,
+        y: r.y + py,
+        width: Math.min(r.width - px, ((right - left) / 2) * r.width),
+        height: Math.min(r.height - py, ((bottom - top) / 2) * r.height),
+      };
+    },
     inspect() {
       return {
         renderer: "webgl",
@@ -1952,6 +2064,11 @@ export function mountPet3D(container, initialState = {}, options = {}) {
           .filter(([, g]) => g.visible)
           .map(([k]) => k),
         toyOnGround: pet.toy.parent === pet.root,
+        toyVisible: pet.toy.visible,
+        bodyRotation: pet.torso.rotation.z,
+        bodyY: pet.root.position.y,
+        earCount: pet.ears.length,
+        wings: pet.legs.filter((l) => l.front).map((l) => l.pivot.rotation.z),
         legs: pet.legs.map((leg) => ({
           name: leg.pivot.name,
           angle: leg.pivot.rotation.x,

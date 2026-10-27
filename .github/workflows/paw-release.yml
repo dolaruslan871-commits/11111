@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref || 'refs/tags/paw-v0.4.0' }}
+          ref: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref || 'refs/tags/paw-v0.5.0' }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -60,18 +60,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref || 'refs/tags/paw-v0.4.0' }}
+          ref: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref || 'refs/tags/paw-v0.5.0' }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
       - name: Source archive and checksums
         run: |
-          git archive --format=zip --prefix=Paw-0.4.0/ HEAD:paw > artifacts/Paw-0.4.0-source.zip
+          git archive --format=zip --prefix=Paw-0.5.0/ HEAD:paw > artifacts/Paw-0.5.0-source.zip
           cd artifacts
           sha256sum * > SHA256SUMS.txt
       - name: Publish preview release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref_name || 'paw-v0.4.0' }}
-        run: gh release create "$TAG" artifacts/* --verify-tag --prerelease --title "Paw 0.4 · Growing together" --notes-file paw/RELEASE_NOTES.md
+          TAG: ${{ startsWith(github.ref, 'refs/tags/paw-v') && github.ref_name || 'paw-v0.5.0' }}
+        run: gh release create "$TAG" artifacts/* --verify-tag --prerelease --title "Paw 0.5 · Play, grow & capture" --notes-file paw/RELEASE_NOTES.md

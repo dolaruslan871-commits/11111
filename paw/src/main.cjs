@@ -23,6 +23,163 @@ const { createSystemControls } = require("./system-controls.cjs");
 const { createFeeder } = require("./feeding.cjs");
 const { createWeather } = require("./weather.cjs");
 const weather = createWeather();
+const V5 = require("./v5-model.cjs");
+const { registerV5, createDesktopShortcut } = require("./v5-services.cjs");
+const gameEngine = require("./game-engine.cjs").createGameEngine();
+let menuWindow = null,
+  houseWindow = null,
+  toyWindow = null,
+  visualRect = { x: 125, y: 170, width: 180, height: 190 },
+  restState = {},
+  meal = null,
+  mealFinish = null,
+  toyAnchor = null,
+  widgetRects = [{ x: 0, y: 0, width: 320, height: 560 }];
+function petArea(b) {
+  const k = preferences?.scale || 1;
+  return screen.getDisplayNearestPoint({
+    x: Math.round(b.x + (visualRect.x + visualRect.width / 2) * k),
+    y: Math.round(b.y + (visualRect.y + visualRect.height / 2) * k),
+  }).workArea;
+}
+function petClamp(position, area) {
+  const k = preferences?.scale || 1;
+  return V5.clampVisiblePosition(position, area, {
+    x: visualRect.x * k,
+    y: visualRect.y * k,
+    width: visualRect.width * k,
+    height: visualRect.height * k,
+  });
+}
+function nativeAppearance(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    if (process.platform === "darwin") {
+      win.setVibrancy(preferences.glass ? "under-window" : null);
+      win.setOpacity(preferences.windowOpacity);
+    } else if (process.platform === "win32") {
+      win.setBackgroundMaterial(preferences.glass ? "acrylic" : "none");
+      win.setOpacity(preferences.windowOpacity);
+    }
+  } catch {}
+}
+function openWidget() {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  const b = petWindow.getBounds(),
+    area = petArea(b),
+    k = preferences.scale;
+  const width = Math.min(760, area.width),
+    height = Math.min(560, area.height);
+  const pos = clampPosition(
+    {
+      x: b.x + (visualRect.x + visualRect.width) * k + 12,
+      y: b.y + visualRect.y * k - height + 40,
+    },
+    area,
+    { width, height },
+  );
+  if (!menuWindow || menuWindow.isDestroyed()) {
+    menuWindow = new BrowserWindow({
+      ...pos,
+      width,
+      height,
+      frame: false,
+      transparent: true,
+      backgroundColor: "#00000000",
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      webPreferences,
+    });
+    secureWindow(menuWindow);
+    menuWindow.loadFile(path.join(__dirname, "widget.html"));
+    menuWindow.on("closed", () => {
+      menuWindow = null;
+      if (menuOpen) {
+        menuOpen = false;
+        broadcast();
+      }
+    });
+  } else {
+    menuWindow.setBounds({ ...pos, width, height });
+    menuWindow.show();
+  }
+  nativeAppearance(menuWindow);
+  menuWindow.focus();
+}
+function habitatWindow(kind) {
+  const area = screen.getPrimaryDisplay().workArea,
+    size =
+      kind === "house"
+        ? { width: 280, height: 240 }
+        : { width: 200, height: 140 };
+  const pos = clampPosition(
+    kind === "house"
+      ? {
+          x: area.x + area.width - size.width - 10,
+          y: area.y + area.height - size.height - 8,
+        }
+      : toyAnchor || {
+          x: area.x + area.width - size.width - 280,
+          y: area.y + area.height - size.height,
+        },
+    area,
+    size,
+  );
+  const win = new BrowserWindow({
+    ...pos,
+    ...size,
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    resizable: false,
+    alwaysOnTop: preferences.alwaysOnTop,
+    skipTaskbar: true,
+    focusable: false,
+    webPreferences,
+  });
+  win.setIgnoreMouseEvents(true);
+  secureWindow(win);
+  win.loadFile(path.join(__dirname, "habitat.html"), { query: { kind } });
+  return win;
+}
+function syncHabitat() {
+  if (!life) return;
+  const show = preferences.showHouse && life.house >= 25;
+  if (show) {
+    if (!houseWindow || houseWindow.isDestroyed())
+      houseWindow = habitatWindow("house");
+    if (!houseWindow.isVisible()) houseWindow.showInactive();
+  } else houseWindow?.hide();
+  const rests = [
+      "sit",
+      "groom",
+      "yawn",
+      "curl",
+      "sleep",
+      "home",
+      "play",
+      "eat",
+      "grateful",
+    ].includes(activity),
+    hasToy = preferences.outfit.toy && preferences.outfit.toy !== "none";
+  if (rests && hasToy) {
+    if (!toyAnchor && petWindow) {
+      const b = petWindow.getBounds();
+      toyAnchor = {
+        x:
+          b.x +
+          (visualRect.x + visualRect.width) * preferences.scale +
+          preferences.toyDistance -
+          80,
+        y: b.y + (visualRect.y + visualRect.height) * preferences.scale - 100,
+      };
+    }
+    if (!toyWindow || toyWindow.isDestroyed()) toyWindow = habitatWindow("toy");
+    toyWindow.showInactive();
+  } else toyWindow?.hide();
+}
+
 const lifeAPI = require("./life.cjs");
 const { sanitizeTasks, dueTasks } = require("./productivity.cjs");
 const tools = require("./desktop-tools.cjs").createDesktopTools();
@@ -48,6 +205,9 @@ const games = new Set(["fish", "butterflies", "ball", "hide"]);
 function progress() {
   return {
     ...lifeAPI.snapshot(life),
+    inventory: V5.stock(life.inventory),
+    garden: life.garden || [],
+    adventure: gameEngine.view(life).session,
     tasks,
     timer,
     game: game
@@ -91,6 +251,14 @@ async function refreshEnvironment() {
 
 // Keep the same settings location for npm and packaged builds, including 0.1.
 app.setName("paw-desktop-pet");
+const testProfile = process.argv
+  .find((x) => x.startsWith("--paw-test-profile="))
+  ?.slice("--paw-test-profile=".length);
+if (!app.isPackaged && testProfile && path.isAbsolute(testProfile)) {
+  require("node:fs").mkdirSync(testProfile, { recursive: true });
+  app.setPath("userData", testProfile);
+}
+
 if (!app.requestSingleInstanceLock()) app.exit(0);
 app.on("second-instance", () => {
   openDashboard();
@@ -132,8 +300,7 @@ const nativeText = (key) =>
       feed: "Move to Trash",
     },
   })[preferences?.language || "ru"][key];
-const effectivePetScale = () =>
-  menuOpen ? Math.max(1, preferences?.scale || 1) : preferences?.scale || 1;
+const effectivePetScale = () => preferences?.scale || 1;
 const state = () => ({
   ...preferences,
   version: app.getVersion(),
@@ -144,6 +311,38 @@ const state = () => ({
   gaze,
   notice,
   foreground: foregroundValue,
+  meal,
+  habitat: {
+    houseVisible: preferences.showHouse && life?.house >= 25,
+    nearHouse:
+      !!houseWindow &&
+      !houseWindow.isDestroyed() &&
+      !!petWindow &&
+      Math.hypot(
+        houseWindow.getBounds().x - petWindow.getBounds().x,
+        houseWindow.getBounds().y - petWindow.getBounds().y,
+      ) < 210,
+    toyAnchor,
+  },
+  approachingHouse:
+    activity === "home" &&
+    houseWindow &&
+    !houseWindow.isDestroyed() &&
+    petWindow &&
+    Math.hypot(
+      houseWindow.getBounds().x - petWindow.getBounds().x,
+      houseWindow.getBounds().y - petWindow.getBounds().y,
+    ) > 210,
+  approachingToy:
+    activity === "play" &&
+    toyAnchor &&
+    petWindow &&
+    Math.abs(
+      toyAnchor.x -
+        petWindow.getBounds().x -
+        visualRect.x * preferences.scale -
+        visualRect.width * preferences.scale * 0.5,
+    ) > 120,
   activity,
   direction,
   menuOpen,
@@ -154,7 +353,7 @@ const state = () => ({
   desktop: true,
 });
 const broadcast = () => {
-  for (const win of [dashboard, petWindow])
+  for (const win of [dashboard, petWindow, menuWindow, houseWindow, toyWindow])
     if (win && !win.isDestroyed()) win.webContents.send("paw:state", state());
 };
 function save() {
@@ -177,8 +376,15 @@ async function update(patch, { allowShortcut = false } = {}) {
   if (!patch || typeof patch !== "object" || Array.isArray(patch))
     return state();
   patch = { ...patch };
-  if (!allowShortcut && patch.shortcut !== null) delete patch.shortcut;
+  if (!allowShortcut) {
+    if (patch.shortcut !== null) delete patch.shortcut;
+    delete patch.shortcuts;
+    delete patch.browser;
+    delete patch.player;
+  }
   const previousScale = preferences.scale;
+  const previousToy = preferences.outfit.toy,
+    previousDistance = preferences.toyDistance;
   const merged = {
     ...preferences,
     ...patch,
@@ -192,14 +398,32 @@ async function update(patch, { allowShortcut = false } = {}) {
   }
   preferences = sanitizeSettings(merged);
   if (
+    previousToy !== preferences.outfit.toy ||
+    previousDistance !== preferences.toyDistance
+  ) {
+    toyAnchor = null;
+    toyWindow?.close();
+    toyWindow = null;
+  }
+  if (dashboard && process.platform !== "linux")
+    dashboard.setOpacity(preferences.windowOpacity);
+  if (menuWindow && process.platform !== "linux")
+    menuWindow.setOpacity(preferences.windowOpacity);
+  syncHabitat();
+  nativeAppearance(dashboard);
+  nativeAppearance(menuWindow);
+  if (
     ["darwin", "win32"].includes(process.platform) &&
     patch.autostart !== undefined
   )
     app.setLoginItemSettings({ openAtLogin: preferences.autostart });
   if (patch.weatherCity !== undefined) void refreshEnvironment();
   if (preferences.scale !== previousScale) resizePet();
+  if (patch.welcomeVersion === "0.5") showPet();
   if (petWindow && !petWindow.isDestroyed())
     petWindow.setAlwaysOnTop(preferences.alwaysOnTop);
+  nativeAppearance(dashboard);
+  nativeAppearance(menuWindow);
   refreshTray();
   broadcast();
   await save();
@@ -226,6 +450,7 @@ function openDashboard(section) {
     "life",
     "tools",
     "games",
+    "studio",
   ].includes(section)
     ? section
     : null;
@@ -246,6 +471,9 @@ function openDashboard(section) {
     autoHideMenuBar: true,
     webPreferences,
   });
+  if (process.platform !== "linux")
+    dashboard.setOpacity(preferences.windowOpacity);
+  nativeAppearance(dashboard);
   secureWindow(dashboard);
   dashboard.loadFile(path.join(__dirname, "index.html")).then(() => {
     if (target && dashboard && !dashboard.isDestroyed())
@@ -265,8 +493,8 @@ function resizePet() {
   if (!petWindow || petWindow.isDestroyed()) return;
   const old = petWindow.getBounds(),
     size = petWindowSize(effectivePetScale());
-  const area = screen.getDisplayMatching(old).workArea;
-  const position = clampPosition(
+  const area = petArea(old);
+  const position = petClamp(
     {
       x: old.x + (old.width - size.width) / 2,
       y: old.y + old.height - size.height,
@@ -279,7 +507,7 @@ function resizePet() {
 function createPet() {
   const area = screen.getPrimaryDisplay().workArea;
   const size = petWindowSize(preferences.scale);
-  const position = clampPosition(
+  const position = petClamp(
     {
       x: area.x + area.width - size.width - 30,
       y: area.y + area.height - size.height,
@@ -297,6 +525,7 @@ function createPet() {
     hasShadow: false,
     alwaysOnTop: preferences.alwaysOnTop,
     skipTaskbar: true,
+    show: preferences.welcomeVersion === "0.5",
     webPreferences,
   });
   secureWindow(petWindow);
@@ -371,7 +600,7 @@ const feeder = createFeeder({
       }
       if (value.mode === "carry" && petWindow && !petWindow.isDestroyed()) {
         const bounds = petWindow.getBounds(),
-          area = screen.getDisplayMatching(bounds).workArea;
+          area = petArea(bounds);
         carryMotion = {
           start: Date.now(),
           from: bounds,
@@ -417,13 +646,14 @@ function contextMenu() {
   if (feeding) return;
   menuOpen = !menuOpen;
   dragging = null;
-  resizePet();
+  if (menuOpen) openWidget();
+  else menuWindow?.hide();
   broadcast();
 }
 function closeMenu() {
   if (menuOpen) {
     menuOpen = false;
-    resizePet();
+    menuWindow?.hide();
     broadcast();
   }
 }
@@ -529,7 +759,7 @@ async function reportSystem(pending) {
 }
 function registerIpc() {
   const trusted = (event) =>
-    [dashboard, petWindow, screenshotSession?.window].some(
+    [dashboard, petWindow, menuWindow, screenshotSession?.window].some(
       (w) =>
         w &&
         !w.isDestroyed() &&
@@ -541,6 +771,48 @@ function registerIpc() {
       if (!trusted(event)) throw new Error("Untrusted sender");
       return callback(event, ...args);
     });
+  registerV5({
+    handle,
+    app,
+    shell,
+    dialog,
+    getOwner: (sender) => BrowserWindow.fromWebContents(sender),
+    getState: state,
+    update,
+    getLife: () => life,
+    saveProgress,
+    setActivity,
+    broadcast,
+    gameEngine,
+  });
+  handle("paw:visual-bounds", (event, rect) => {
+    if (
+      event.sender !== petWindow?.webContents ||
+      !rect ||
+      !["x", "y", "width", "height"].every((k) => Number.isFinite(rect[k])) ||
+      rect.width < 20 ||
+      rect.height < 20 ||
+      rect.x < 0 ||
+      rect.y < 0 ||
+      rect.x + rect.width > 430 ||
+      rect.y + rect.height > 390
+    )
+      return false;
+    visualRect = rect;
+    const b = petWindow.getBounds(),
+      p = petClamp(b, petArea(b));
+    if (p.x !== b.x || p.y !== b.y) petWindow.setPosition(p.x, p.y);
+    return true;
+  });
+  handle("paw:widget-rects", (event, rects) => {
+    if (event.sender === menuWindow?.webContents && Array.isArray(rects))
+      widgetRects = rects
+        .slice(0, 4)
+        .filter((r) =>
+          ["x", "y", "width", "height"].every((k) => Number.isFinite(r[k])),
+        );
+    return true;
+  });
   handle("paw:get-state", () => state());
   handle("paw:update", (_, patch) => update(patch));
   handle("paw:show-pet", showPet);
@@ -559,6 +831,8 @@ function registerIpc() {
     return true;
   });
   handle("paw:action", (_, value) => {
+    if (value === "stand") return state();
+    restState = {};
     if (STATES.has(value)) {
       lifeAPI.interact(life, value);
       void saveProgress();
@@ -581,7 +855,10 @@ function registerIpc() {
   handle("paw:settings", (_, kind) => openSettings(kind));
   handle("paw:life", async (_, command, value) => {
     if (command === "food") {
-      lifeAPI.feedFood(life, value);
+      const fed = V5.feedInventory(life, preferences.skin, value);
+      if (!fed.ok) return fed;
+      meal = { food: value, started: Date.now(), ends: Date.now() + 6500 };
+      mealFinish = meal.ends;
       setActivity("eat", 6500);
     } else if (command === "gift") {
       const result = lifeAPI.dailyGift(
@@ -597,12 +874,25 @@ function registerIpc() {
       await saveProgress();
       return { ...result, state: state() };
     } else if (command === "build") {
-      if (life.coins < 20) return { ok: false, message: "Нужно 20 монет." };
+      life.inventory = V5.stock(life.inventory);
+      if (
+        life.coins < 20 ||
+        life.inventory.wood < 10 ||
+        life.inventory.stone < 5
+      )
+        return {
+          ok: false,
+          message:
+            "Нужно 20 монет, 10 дерева и 5 камня. Добудь ресурсы в играх.",
+        };
       if (life.house >= 100)
         return { ok: false, message: "Домик уже построен." };
       life.coins -= 20;
+      life.inventory.wood -= 10;
+      life.inventory.stone -= 5;
       life.house = Math.min(100, life.house + 25);
       setActivity("build", 10000);
+      syncHabitat();
     } else if (command === "birthday") {
       if (
         typeof value !== "string" ||
@@ -819,8 +1109,8 @@ function registerIpc() {
         x: dragging.bounds.x + point.x - dragging.point.x,
         y: dragging.bounds.y + point.y - dragging.point.y,
       };
-      const area = screen.getDisplayNearestPoint(target).workArea;
-      const pos = clampPosition(target, area, dragging.bounds);
+      const area = petArea(target);
+      const pos = petClamp(target, area);
       petWindow.setPosition(pos.x, pos.y);
     }
   });
@@ -888,11 +1178,22 @@ function tick() {
     y: (cursor.y - bounds.y) / scale,
   };
   const insidePet =
-    relative.x >= 80 &&
-    relative.x <= 350 &&
-    relative.y >= 125 &&
-    relative.y <= 385;
-  const shouldIgnore = !(insidePet || menuOpen || dragging || feeding);
+    relative.x >= visualRect.x - 12 &&
+    relative.x <= visualRect.x + visualRect.width + 12 &&
+    relative.y >= visualRect.y - 12 &&
+    relative.y <= visualRect.y + visualRect.height + 12;
+  if (menuWindow?.isVisible()) {
+    const m = menuWindow.getBounds();
+    const hit = widgetRects.some(
+      (r) =>
+        cursor.x >= m.x + r.x &&
+        cursor.x <= m.x + r.x + r.width &&
+        cursor.y >= m.y + r.y &&
+        cursor.y <= m.y + r.y + r.height,
+    );
+    menuWindow.setIgnoreMouseEvents(!hit, { forward: true });
+  }
+  const shouldIgnore = !(insidePet || dragging || feeding);
   if (shouldIgnore !== ignoringMouse) {
     ignoringMouse = shouldIgnore;
     petWindow.setIgnoreMouseEvents(shouldIgnore, { forward: true });
@@ -900,6 +1201,13 @@ function tick() {
   const now = Date.now(),
     idle = powerMonitor.getSystemIdleTime();
   lifeAPI.tickLife(life, { now, activity });
+  gameEngine.tick(life);
+  if (mealFinish && now >= mealFinish) {
+    mealFinish = null;
+    meal = null;
+    setActivity("grateful", 5000);
+  }
+  if (now - lastGaze > 500) syncHabitat();
   if (now - lastProgressSave > 30000) {
     lastProgressSave = now;
     void saveProgress();
@@ -966,9 +1274,27 @@ function tick() {
     setActivity("excited", 10000);
     life.mood = Math.min(100, life.mood + 5);
   }
-  if (idle > 180 && !["sleep", "home"].includes(activity) && !game)
-    setActivity(life.house >= 25 ? "home" : "sleep", 60000);
-  if (now > activityUntil && !game) {
+  if (
+    !gameEngine.view(life).session &&
+    activity !== "eat" &&
+    activity !== "grateful"
+  ) {
+    const wasAuto = restState.auto,
+      rest = V5.restActivity(idle * 1000, restState, now);
+    restState = { ...rest.rest, auto: !!rest.activity };
+    if (rest.activity) {
+      const nextRest =
+        rest.activity === "curl" && preferences.showHouse && life.house >= 25
+          ? "home"
+          : rest.activity;
+      if (activity !== nextRest) setActivity(nextRest, 650000);
+    } else if (
+      wasAuto &&
+      ["sit", "groom", "yawn", "curl", "wake", "home"].includes(activity)
+    )
+      setActivity("idle", 6000);
+  }
+  if (now > activityUntil && !game && !gameEngine.view(life).session) {
     let next = lifeAPI.chooseActivity(life, preferences.behavior, {
       now,
       idle,
@@ -994,14 +1320,46 @@ function tick() {
       else if (/steam|game|minecraft/.test(name)) next = "gamepad";
       else if (/music|spotify|vlc/.test(name)) next = "dance";
     }
+    if (next === "play" && Math.random() < 0.4)
+      next =
+        {
+          cat: "scratch",
+          dog: "sniff",
+          husky: "shake",
+          fox: "sniff",
+          rabbit: "groom",
+          kangaroo: "groom",
+          owl: "chirp",
+          croc: "yawn",
+          dinosaur: "shake",
+        }[preferences.skin] || "play";
     setActivity(next, 10000 + Math.random() * 16000);
   }
   if (preferences.roaming && petWindow.isVisible()) {
     const b = petWindow.getBounds(),
-      area = screen.getDisplayMatching(b).workArea;
+      area = petArea(b);
     let dx = 0,
       dy = 0;
-    if (activity === "float") {
+    if (activity === "home" && houseWindow && !houseWindow.isDestroyed()) {
+      const house = houseWindow.getBounds(),
+        tx =
+          house.x +
+          house.width * 0.4 -
+          visualRect.x * preferences.scale -
+          visualRect.width * preferences.scale * 0.5,
+        ty =
+          house.y +
+          house.height * 0.8 -
+          (visualRect.y + visualRect.height) * preferences.scale;
+      dx = Math.abs(tx - b.x) > 3 ? Math.sign(tx - b.x) * 3 : 0;
+      dy = Math.abs(ty - b.y) > 3 ? Math.sign(ty - b.y) * 3 : 0;
+    } else if (activity === "play" && toyAnchor) {
+      const tx =
+        toyAnchor.x -
+        visualRect.x * preferences.scale -
+        visualRect.width * preferences.scale * 0.5;
+      dx = Math.abs(tx - b.x) > 120 ? Math.sign(tx - b.x) * 2 : 0;
+    } else if (activity === "float") {
       const sx = Math.floor(now / 6000) % 2 ? 1 : -1,
         sy = Math.floor(now / 7500) % 2 ? 1 : -1;
       dx = direction * 2;
@@ -1047,7 +1405,7 @@ function tick() {
       }
     }
     if (dx || dy) {
-      const pos = clampPosition({ x: b.x + dx, y: b.y + dy }, area, b);
+      const pos = petClamp({ x: b.x + dx, y: b.y + dy }, area);
       if (pos.x === b.x && dx) {
         direction *= -1;
         broadcast();
@@ -1069,23 +1427,29 @@ app.whenReady().then(async () => {
   try {
     const stored = JSON.parse(await fs.readFile(progressPath, "utf8"));
     life = lifeAPI.createLife(stored.life);
+    life.inventory = V5.stock(stored.life?.inventory);
+    life.garden = stored.life?.garden || [];
     tasks = sanitizeTasks(stored.tasks);
     if (stored.timer && Number.isFinite(stored.timer.ends))
       timer = { ends: stored.timer.ends };
   } catch {
     life = lifeAPI.createLife();
   }
+  life.inventory = V5.stock(life.inventory);
+  gameEngine.view(life);
+  void createDesktopShortcut({ app, shell }).catch(() => {});
   void refreshEnvironment();
   registerIpc();
   Menu.setApplicationMenu(null);
   openDashboard();
   createPet();
   createTray();
+  syncHabitat();
   setInterval(tick, 60).unref();
   screen.on("display-metrics-changed", () => {
     if (!petWindow) return;
     const b = petWindow.getBounds(),
-      p = clampPosition(b, screen.getDisplayMatching(b).workArea, b);
+      p = petClamp(b, petArea(b));
     petWindow.setPosition(p.x, p.y);
   });
   if (isSmoke) {

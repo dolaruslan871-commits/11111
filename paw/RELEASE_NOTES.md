@@ -1,26 +1,19 @@
-# Paw 0.4.0 · Growing together
+# Paw 0.5.0 · Play, grow & capture
 
-Update based on the supplied Paw 0.3 archive. No AI integration.
+- One-time animated welcome featuring all nine pets and a Continue button.
+- Separate glass quick menu above/right, inline music/timer/notes/search and multiple app launchers; browser and player pickers.
+- Species-specific movement, grooming/yawning/curled sleep/wake, age fur and mood ears/tails. Removed the screen-paw pose and automatic outfits. Rename everyone except Hasya, with the requested creator's-pet note.
+- Static house/toys, house visibility, toy-distance control; resource/coin construction. Species food inventory, animated bowl/ground feeding and thanks.
+- Fishing with bait, casts, hook timing, steering and line tension; persistent gardening; meadow forage and material gathering games.
+- Photo/video studio: 360° view, camera height, actions/backgrounds, high-res PNG and clips up to 12 seconds, including 9:16. Primary MP4 export renders exactly 30 fps with explicit frame timestamps; exports save to Desktop.
+- Seven themes, glass/window opacity, simple/detailed interface and visible-animal edge clamping. Windows desktop shortcut and Mac first-launch Desktop link.
+- Existing settings, real calendar age and progress migrate. No AI.
 
-- Real calendar age and gradual growth over eight weeks; age shown in the menu and Personality page. Saved mood, energy, hunger, friendship, favorite food, coins and house progress.
-- Personality editor, quiet hours, inactivity sleep, return greeting, cursor play, optional weather/time/season/app/window reactions.
-- Nine pets including the husky Hasya (Хася) and the fox from the references. Slimmer owl, kangaroo and dinosaur; corrected shared collar; more face, fur/feather and eye detail; clothes attached to body/limbs.
-- Neutral black/graphite dark theme, glass quick menu, readable type and persistent 360° preview.
-- Companion pet interactions, progressive house, virtual treats, daily gifts, four lightweight games and coin wardrobe rewards.
-- New animated props for transport, zero gravity, painting, weather, seasonal events, birthday cake, detective and dance gestures.
-- Timers/alarms, notes/reminders, music commands, indexed file/app search, screen/area screenshots, actual CPU/RAM/battery indicators and startup setting.
-- Preserved native reversible file/folder Trash feeding; real source disappearance verified.
+## Install
 
-## Download
+Windows: quit Paw, run `Paw-0.5.0-windows-x64-Setup.exe`.
+Mac Intel: `Paw-0.5.0-mac-x64.zip`.
+Mac Apple Silicon: `Paw-0.5.0-mac-arm64.zip`.
+Mac: extract with Archive Utility, replace the complete Paw.app in Applications, then open it. Node/npm are not required. Allow Desktop access if macOS requests it for exports/shortcut creation.
 
-- Windows x64 installer: `Paw-0.4.0-windows-x64-Setup.exe`
-- Mac Intel: `Paw-0.4.0-mac-x64.zip`
-- Mac Apple Silicon: `Paw-0.4.0-mac-arm64.zip`
-
-Quit the previous Paw first. Windows: run Setup. Mac: use Archive Utility, then move the complete Paw.app into Applications and replace the previous app. Node/npm are not required. Settings retain the same app identity.
-
-## Platform notes
-
-Unsigned / unnotarized preview. Mac screen capture and window interaction may require privacy permissions. Bluetooth direct switching on Mac needs an available blueutil helper; otherwise Bluetooth settings open. Sensor values are shown only when supported; temperature is unavailable through the standard OS interface. Window hiding is an approximate clipped animation. System audio/media, Bluetooth hardware and native Mac/Windows GUI still need target-machine testing.
-
-Mac ZIPs are cross-packaged on Ubuntu; NSIS is built on Windows. Checksum file is included with release assets.
+Unsigned / unnotarized preview. Native media/Bluetooth/window features depend on platform permissions and hardware. Mac direct Bluetooth requires an available blueutil helper; otherwise settings open. Search opens Google results in the selected browser; it is not an AI answer service. If H.264 frame export is unavailable, video falls back to a supported MediaRecorder format. See the included 0.5 guide for controls and platform limits.
