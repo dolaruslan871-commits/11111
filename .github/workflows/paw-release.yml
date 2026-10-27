@@ -2,12 +2,14 @@ name: Build Paw installers
 on:
   push:
     tags: ['paw-v0.6.3']
+    branches: ['downloads']
+    paths: ['.github/workflows/paw-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: paw-installers-${{ github.ref }}
-  cancel-in-progress: false
+  group: paw-installers-refs/tags/paw-v0.6.3
+  cancel-in-progress: true
 jobs:
   build:
     strategy:
@@ -16,7 +18,7 @@ jobs:
         include:
           - os: windows-latest
             target: win
-          - os: macos-latest
+          - os: ubuntu-latest
             target: mac
     runs-on: ${{ matrix.os }}
     defaults:
