@@ -1,0 +1,57 @@
+{
+  "name": "paw-desktop-pet",
+  "version": "0.6.3",
+  "private": true,
+  "description": "Paw — a little friend for your desktop",
+  "author": "Руслан Доля",
+  "main": "src/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dolaruslan871-commits/11111.git",
+    "directory": "paw"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.*",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "electron-builder --mac zip --x64 --arm64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.paw.desktop",
+    "productName": "Paw",
+    "icon": "src/assets/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "target": [
+        "zip"
+      ],
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0",
+      "artifactName": "Paw-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "artifactName": "Paw-${version}-windows-${arch}-Setup.${ext}"
+    },
+    "artifactName": "Paw-${version}-${os}-${arch}.${ext}",
+    "publish": []
+  }
+}
