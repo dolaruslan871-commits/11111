@@ -10,7 +10,7 @@ const copy = {
   en: { change: "Change language", listen: "Listen to the introduction", stop: "Stop", unavailable: "No voice for this language is installed on this device" },
 };
 export function languagePicker() {
-  return `<section class="welcome language-welcome"><div class="welcome-logo">Paw <span>0.7.0</span></div><div class="language-symbol" aria-hidden="true">A<span>あ</span></div><h1><span lang="uk">Обери мову</span><span lang="en">Choose your language</span><span lang="ru">Выбери язык</span></h1><div class="welcome-languages">${LANGUAGES.map(({id,name}) => `<button type="button" lang="${id}" data-welcome-language="${id}"><strong>${name}</strong><span aria-hidden="true">→</span></button>`).join("")}</div></section>`;
+  return `<section class="welcome language-welcome"><div class="welcome-logo">Paw <span>0.7.1</span></div><div class="language-symbol" aria-hidden="true">A<span>あ</span></div><h1><span lang="uk">Обери мову</span><span lang="en">Choose your language</span><span lang="ru">Выбери язык</span></h1><div class="welcome-languages">${LANGUAGES.map(({id,name}) => `<button type="button" lang="${id}" data-welcome-language="${id}"><strong>${name}</strong><span aria-hidden="true">→</span></button>`).join("")}</div></section>`;
 }
 export function welcomeControls(language) {
   const c = copy[language] || copy.en;

@@ -1,7 +1,7 @@
 name: Build Paw 0.7.1
 on:
   push:
-    tags: ['paw-v0.7.1']
+    tags: ['paw-v0.7.1*']
 permissions:
   contents: write
 concurrency:
@@ -61,7 +61,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: paw-v0.7.1
+          TAG: ${{ github.ref_name }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release already exists; preserving published downloads."

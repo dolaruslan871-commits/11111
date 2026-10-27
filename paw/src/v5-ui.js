@@ -183,7 +183,7 @@ export const petName = (state, skin, fallback) =>
     : state.names?.[skin] || v(fallback, state.language);
 export function welcome(state, pets, renderPet) {
   const w = (t) => escapeHTML(v(t, state.language));
-  return `<section class="welcome"><div class="welcome-logo">Paw <span>0.7.0</span></div><h1>${w("Добро пожаловать в Paw")}</h1><p class="welcome-subtitle">${w("Твой маленький друг на рабочем столе")}</p><div class="welcome-parade">${pets.map((p, i) => `<div style="--i:${i}">${renderPet(p.id, "idle", {})}<span>${escapeHTML(petName(state, p.id, p.name))}</span></div>`).join("")}</div><div class="welcome-guide">${[
+  return `<section class="welcome"><div class="welcome-logo">Paw <span>0.7.1</span></div><h1>${w("Добро пожаловать в Paw")}</h1><p class="welcome-subtitle">${w("Твой маленький друг на рабочем столе")}</p><div class="welcome-parade">${pets.map((p, i) => `<div style="--i:${i}">${renderPet(p.id, "idle", {})}<span>${escapeHTML(petName(state, p.id, p.name))}</span></div>`).join("")}</div><div class="welcome-guide">${[
     [
       "♡",
       "Знакомься и заботься",
