@@ -1,0 +1,2 @@
+Paw-0.7.1-mac-arm64.zip filter=lfs diff=lfs merge=lfs -text
+Paw-0.7.1-mac-x64.zip filter=lfs diff=lfs merge=lfs -text
